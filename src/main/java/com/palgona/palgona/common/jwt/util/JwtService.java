@@ -8,6 +8,7 @@ import com.palgona.palgona.dto.AuthToken;
 import com.palgona.palgona.repository.RefreshTokenRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @RequiredArgsConstructor
 @Service
@@ -16,6 +17,7 @@ public class JwtService {
     private final JwtUtils jwtUtils;
     private final RefreshTokenRepository refreshTokenRepository;
 
+    @Transactional
     public AuthToken issueToken(String socialId) {
         String accessToken = jwtUtils.createAccessToken(socialId);
         String refreshToken = jwtUtils.createRefreshToken(socialId);
@@ -24,6 +26,7 @@ public class JwtService {
             refreshTokenRepository.deleteBySocialId(socialId);
         }
 
+        refreshTokenRepository.flush();
         refreshTokenRepository.save(new RefreshToken(refreshToken, socialId));
 
         return new AuthToken(accessToken, refreshToken);
