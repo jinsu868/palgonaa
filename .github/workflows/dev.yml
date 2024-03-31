@@ -22,7 +22,7 @@ jobs:
 
       - name: Make FCMAccountKey.json
         run: |
-          - cd ./src/main/resources
+          cd ./src/main/resources
           touch ./FCMAccountKey.json
           echo "${{ secrets.FCM_KEY }}" > ./FCMAccountKey.json
         shell: bash
