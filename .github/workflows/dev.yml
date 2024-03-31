@@ -20,6 +20,13 @@ jobs:
           java-version: '17'
           distribution: 'temurin'
 
+      - name: Make FCMAccountKey.json
+        run: |
+          - cd ./src/main/resources
+          touch ./FCMAccountKey.json
+          echo "${{ secrets.FCM_KEY }}" > ./FCMAccountKey.json
+        shell: bash
+
       - name: Make application.yml
         run: |
           cd ./src/main/resources
