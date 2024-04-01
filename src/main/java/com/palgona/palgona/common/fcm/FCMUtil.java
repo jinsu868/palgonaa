@@ -32,9 +32,9 @@ public class FCMUtil {
     private final ObjectMapper objectMapper;
     private final RestTemplate restTemplate;
 
-    public void sendMessageTo(String targetToken, String title, String body) {
+    public void sendMessageTo(String targetToken, String title, String body, String targetUrl) {
         try {
-            String message = makeMessage(targetToken, title, body);
+            String message = makeMessage(targetToken, title, body, targetUrl);
 
             HttpHeaders headers = new HttpHeaders();
             headers.setBearerAuth(getAccessToken());
@@ -54,19 +54,15 @@ public class FCMUtil {
             throw new BusinessException(FAILED_TO_SEND_FCM);
         }
     }
-    private String makeMessage(String targetToken, String title, String body) {
+    private String makeMessage(String targetToken, String title, String body, String targetUrl) {
         try {
-            FcmMessage fcmMessage = FcmMessage.builder()
-                    .message(FcmMessage.Message.builder()
-                            .token(targetToken)
-                            .notification(FcmMessage.Notification.builder()
-                                    .title(title)
-                                    .body(body)
-                                    .build())
-                            .build())
-                    .build();
+            FCMessage fcMessage = new FCMessage(false, new FCMessage.Message(
+                            targetToken,
+                            new FCMessage.Notification(title, body),
+                            new FCMessage.Data(targetUrl)
+                    ));
 
-            return objectMapper.writeValueAsString(fcmMessage);
+            return objectMapper.writeValueAsString(fcMessage);
         } catch (JsonProcessingException e) {
             throw new BusinessException(FAILED_TO_GENERATE_FCM_JSON);
         }
