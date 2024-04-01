@@ -6,7 +6,10 @@ import com.palgona.palgona.domain.member.Member;
 import com.palgona.palgona.domain.notification.Notification;
 import com.palgona.palgona.repository.NotificationRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
+
+import java.util.List;
 
 import static com.palgona.palgona.common.error.code.NotificationErrorCode.*;
 
@@ -14,6 +17,11 @@ import static com.palgona.palgona.common.error.code.NotificationErrorCode.*;
 @RequiredArgsConstructor
 public class NotificationService {
     private final NotificationRepository notificationRepository;
+
+    public List<Notification> readNotifications(CustomMemberDetails memberDetails, Long cursorId, int size) {
+        Member member = memberDetails.getMember();
+        return notificationRepository.findByMemberIdAndCursor(member.getId(), cursorId, PageRequest.of(0, size));
+    }
 
     public void deleteNotification(CustomMemberDetails memberDetails, Long id){
         Member member = memberDetails.getMember();
