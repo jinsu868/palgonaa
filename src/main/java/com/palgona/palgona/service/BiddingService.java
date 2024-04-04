@@ -36,6 +36,8 @@ public class BiddingService {
 
     @Transactional
     public void attemptBidding(Member member, BiddingAttemptRequest request) {
+        Member biddingMember = findMember(member);
+
         Product product = productRepository.findById(request.productId())
                 .orElseThrow(() -> new IllegalArgumentException("해당 ID의 product가 없습니다."));
 
@@ -57,8 +59,11 @@ public class BiddingService {
         if (priceDifference < threshold) {
             throw new BusinessException(BIDDING_INSUFFICIENT_BID);
         }
-        
-        Bidding bidding = Bidding.builder().member(member).product(product).price(attemptPrice).build();
+
+        int previousBid = biddingRepository.findHighestPriceByMember(biddingMember).orElse(0);
+        int extraCost = attemptPrice - previousBid;
+        biddingMember.useMileage(extraCost);
+        Bidding bidding = Bidding.builder().member(biddingMember).product(product).price(attemptPrice).build();
 
         biddingRepository.save(bidding);
     }
@@ -117,5 +122,10 @@ public class BiddingService {
                 }
             }
         }
+    }
+
+    private Member findMember(Member member) {
+        return memberRepository.findById(member.getId())
+                .orElseThrow(() -> new BusinessException(MEMBER_NOT_FOUND));
     }
 }
