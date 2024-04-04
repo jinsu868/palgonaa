@@ -5,10 +5,12 @@ import static com.palgona.palgona.common.error.code.PurchaseErrorCode.PURCHASE_N
 import com.palgona.palgona.common.dto.response.SliceResponse;
 import com.palgona.palgona.common.error.exception.BusinessException;
 import com.palgona.palgona.domain.member.Member;
+import com.palgona.palgona.domain.mileage.MileageHistory;
 import com.palgona.palgona.domain.purchase.Purchase;
 import com.palgona.palgona.domain.purchase.PurchaseState;
 import com.palgona.palgona.dto.purchase.PurchaseCancelRequest;
 import com.palgona.palgona.dto.purchase.PurchaseResponse;
+import com.palgona.palgona.repository.MileageHistoryRepository;
 import com.palgona.palgona.repository.purchase.PurchaseRepository;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -25,6 +27,8 @@ public class PurchaseService {
 
     private final PurchaseRepository purchaseRepository;
 
+    private final MileageHistoryRepository mileageHistoryRepository;
+
     public SliceResponse<PurchaseResponse> readPurchases(Member member, int pageSize, String cursor) {
         return purchaseRepository.findAllByMember(member, pageSize, cursor);
     }
@@ -36,7 +40,22 @@ public class PurchaseService {
         purchase.validateDeadline(LocalDateTime.now());
         purchase.confirm();
         Member seller = purchase.getBidding().getMember();
-        seller.receivePayment(purchase.getPurchasePrice());
+        int purchaseAmount = purchase.getPurchasePrice();
+        seller.receivePayment(purchaseAmount);
+
+        mileageHistoryRepository.save(MileageHistory.builder()
+                .beforeMileage(seller.getMileage() - purchaseAmount)
+                .afterMileage(seller.getMileage())
+                .amount(purchaseAmount)
+                .member(seller)
+                .build());
+
+        mileageHistoryRepository.save(MileageHistory.builder()
+                .beforeMileage(member.getMileage() + purchaseAmount)
+                .afterMileage(member.getMileage())
+                .amount(purchaseAmount)
+                .member(member)
+                .build());
     }
 
     @Transactional
