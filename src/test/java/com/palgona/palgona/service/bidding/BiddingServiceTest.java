@@ -11,6 +11,8 @@ import com.palgona.palgona.domain.product.Product;
 import com.palgona.palgona.domain.product.ProductState;
 import com.palgona.palgona.dto.BiddingAttemptRequest;
 import com.palgona.palgona.repository.BiddingRepository;
+import com.palgona.palgona.repository.purchase.PurchaseRepository;
+import com.palgona.palgona.repository.member.MemberRepository;
 import com.palgona.palgona.repository.product.ProductRepository;
 import com.palgona.palgona.service.BiddingService;
 import org.junit.jupiter.api.BeforeEach;
@@ -32,12 +34,18 @@ class BiddingServiceTest {
     @Mock
     private ProductRepository productRepository;
 
+    @Mock
+    private PurchaseRepository purchaseRepository;
+
+    @Mock
+    private MemberRepository memberRepository;
+
     private BiddingService biddingService;
 
     @BeforeEach
     void setUp() {
         MockitoAnnotations.openMocks(this);
-        biddingService = new BiddingService(biddingRepository, productRepository);
+        biddingService = new BiddingService(biddingRepository, productRepository, purchaseRepository, memberRepository);
     }
 
     @Test
