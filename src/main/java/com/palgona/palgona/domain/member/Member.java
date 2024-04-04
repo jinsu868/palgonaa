@@ -77,4 +77,15 @@ public class Member extends BaseTimeEntity {
         this.role = Role.USER;
     }
 
+    public void useMileage(int usage) {
+        mileage -= usage;
+    }
+
+    public void refundMileage(int price) {
+        mileage += price;
+    }
+
+    public void receivePayment(int price) {
+        mileage += price;
+    }
 }
