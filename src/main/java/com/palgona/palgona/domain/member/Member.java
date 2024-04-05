@@ -1,6 +1,9 @@
 package com.palgona.palgona.domain.member;
 
+import static com.palgona.palgona.common.error.code.MemberErrorCode.INSUFFICIENT_MILEAGE;
+
 import com.palgona.palgona.common.entity.BaseTimeEntity;
+import com.palgona.palgona.common.error.exception.BusinessException;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -8,6 +11,7 @@ import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.Version;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -30,6 +34,9 @@ public class Member extends BaseTimeEntity {
     private String socialId;
 
     private String profileImage;
+
+    @Version
+    Long version;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
@@ -70,14 +77,17 @@ public class Member extends BaseTimeEntity {
         this.profileImage = imageUrl;
     }
 
-
     public void updateMileage(int after){ this.mileage = after; }
 
     public void signUp() {
         this.role = Role.USER;
     }
 
-    public void useMileage(int usage) {
+    public void useMileage(int usage) throws BusinessException {
+        if (mileage < usage) {
+            throw new BusinessException(INSUFFICIENT_MILEAGE);
+        }
+
         mileage -= usage;
     }
 

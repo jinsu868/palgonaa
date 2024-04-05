@@ -4,7 +4,9 @@ import static com.palgona.palgona.common.error.code.BiddingErrorCode.BIDDING_EXP
 import static com.palgona.palgona.common.error.code.BiddingErrorCode.BIDDING_INSUFFICIENT_BID;
 import static com.palgona.palgona.common.error.code.BiddingErrorCode.BIDDING_LOWER_PRICE;
 import static com.palgona.palgona.common.error.code.MemberErrorCode.MEMBER_NOT_FOUND;
+import static com.palgona.palgona.common.error.code.ProductErrorCode.NOT_FOUND;
 
+import com.palgona.palgona.common.annotation.Retry;
 import com.palgona.palgona.common.error.exception.BusinessException;
 import com.palgona.palgona.domain.bidding.Bidding;
 import com.palgona.palgona.domain.bidding.BiddingState;
@@ -35,11 +37,9 @@ public class BiddingService {
     private final MemberRepository memberRepository;
 
     @Transactional
+    @Retry
     public void attemptBidding(Member member, BiddingAttemptRequest request) {
-        Member biddingMember = findMember(member);
-
-        Product product = productRepository.findById(request.productId())
-                .orElseThrow(() -> new IllegalArgumentException("해당 ID의 product가 없습니다."));
+        Product product = findProductWithPessimisticLock(request);
 
         int attemptPrice = request.price();
 
@@ -60,12 +60,19 @@ public class BiddingService {
             throw new BusinessException(BIDDING_INSUFFICIENT_BID);
         }
 
+        Member biddingMember = findMemberWithOptimisticLock(member);
         int previousBid = biddingRepository.findHighestPriceByMember(biddingMember).orElse(0);
         int extraCost = attemptPrice - previousBid;
         biddingMember.useMileage(extraCost);
         Bidding bidding = Bidding.builder().member(biddingMember).product(product).price(attemptPrice).build();
 
         biddingRepository.save(bidding);
+    }
+
+    private Product findProductWithPessimisticLock(BiddingAttemptRequest request) {
+        return productRepository.findByIdWithPessimisticLock(request.productId())
+                .orElseThrow(() -> new BusinessException(NOT_FOUND));
+
     }
 
     public Page<Bidding> findAllByProductId(long productId, Pageable pageable) {
@@ -76,8 +83,9 @@ public class BiddingService {
     }
 
     @Transactional
+    @Retry
     public void checkBiddingExpiration() {
-        List<Bidding> expiredBiddings = biddingRepository.findExpiredBiddings(LocalDateTime.now());
+        List<Bidding> expiredBiddings = biddingRepository.findExpiredBiddingsWithOptimisticLock(LocalDateTime.now());
 
         Map<Long, Bidding> highestPriceBiddings = new HashMap<>();
         Map<Member, Integer> memberHighestBids = new HashMap<>();
@@ -103,29 +111,32 @@ public class BiddingService {
             });
         }
 
+        // 입찰자 마일리지 갱신할 때 동시성 처리
         for (Bidding bidding : expiredBiddings) {
             Long productId = bidding.getProduct().getId();
             Bidding highestPriceBidding = highestPriceBiddings.get(productId);
+            Member biddingMember = bidding.getMember();
+            int bidPrice = bidding.getPrice();
             if (bidding.getId().equals(highestPriceBidding.getId())) {
                 bidding.updateState(BiddingState.SUCCESS);
                 Purchase purchase = Purchase.builder()
                         .bidding(bidding)
-                        .member(bidding.getMember())
-                        .purchasePrice(bidding.getPrice())
+                        .member(biddingMember)
+                        .purchasePrice(bidPrice)
                         .build();
 
                 purchaseRepository.save(purchase);
             } else {
                 bidding.updateState(BiddingState.FAILED);
-                if (memberHighestBids.get(bidding.getMember()) == bidding.getPrice()) {
-                    bidding.getMember().refundMileage(bidding.getPrice());
+                if (memberHighestBids.get(biddingMember) == bidPrice) {
+                    biddingMember.refundMileage(bidPrice);
                 }
             }
         }
     }
 
-    private Member findMember(Member member) {
-        return memberRepository.findById(member.getId())
+    private Member findMemberWithOptimisticLock(Member member) {
+        return memberRepository.findByIdWithOptimisticLock(member.getId())
                 .orElseThrow(() -> new BusinessException(MEMBER_NOT_FOUND));
     }
 }
