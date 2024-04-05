@@ -37,7 +37,6 @@ public class PurchaseService {
     @Transactional
     @Retry
     public void confirmPurchase(Member member, Long id) {
-        //판매자 돈 변경할 때 동시성 처리
         Purchase purchase = findPurchaseWithSellerAndOptimisticLock(id);
         purchase.validateOwner(member);
         purchase.validateDeadline(LocalDateTime.now());
@@ -64,7 +63,6 @@ public class PurchaseService {
     @Transactional
     @Retry
     public void cancelPurchase(Member member, Long id, PurchaseCancelRequest request) {
-        //구매자 마일리지 복구할 때 동시성 처리
         Purchase purchase = findPurchaseWithBuyerAndOptimisticLock(id);
         purchase.validateOwner(member);
         purchase.validateDeadline(LocalDateTime.now());
@@ -77,7 +75,6 @@ public class PurchaseService {
 
     @Transactional
     public void checkPurchaseExpiration() {
-        //구매자 마일리지 변경할 때 동시성 처리
         List<Purchase> expiredPurchases = purchaseRepository.findAllByDeadline(LocalDateTime.now());
         List<Long> purchaseCanceledIds = new ArrayList<>();
         for (Purchase expiredPurchase : expiredPurchases) {

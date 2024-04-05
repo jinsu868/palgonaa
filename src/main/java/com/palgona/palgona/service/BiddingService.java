@@ -111,7 +111,6 @@ public class BiddingService {
             });
         }
 
-        // 입찰자 마일리지 갱신할 때 동시성 처리
         for (Bidding bidding : expiredBiddings) {
             Long productId = bidding.getProduct().getId();
             Bidding highestPriceBidding = highestPriceBiddings.get(productId);
