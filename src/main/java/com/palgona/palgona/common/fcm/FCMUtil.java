@@ -4,6 +4,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.auth.oauth2.GoogleCredentials;
 import com.palgona.palgona.common.error.exception.BusinessException;
+import com.palgona.palgona.domain.notification.Type;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -32,14 +33,14 @@ public class FCMUtil {
     private final ObjectMapper objectMapper;
     private final RestTemplate restTemplate;
 
-    public void sendMessageTo(String targetToken, String title, String body, String targetUrl) {
+    public void sendMessageTo(String targetToken, String title, String body, Type type, Long targetId) {
+        String message = makeMessage(targetToken, title, body, type, targetId);
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.setBearerAuth(getAccessToken());
+        headers.setContentType(MediaType.APPLICATION_JSON);
+
         try {
-            String message = makeMessage(targetToken, title, body, targetUrl);
-
-            HttpHeaders headers = new HttpHeaders();
-            headers.setBearerAuth(getAccessToken());
-            headers.setContentType(MediaType.APPLICATION_JSON);
-
             HttpEntity<String> entity = new HttpEntity<>(message, headers);
 
             ResponseEntity<String> response = restTemplate.exchange(
@@ -54,14 +55,13 @@ public class FCMUtil {
             throw new BusinessException(FAILED_TO_SEND_FCM);
         }
     }
-    private String makeMessage(String targetToken, String title, String body, String targetUrl) {
+    private String makeMessage(String targetToken, String title, String body, Type type, Long targetId) {
+        FCMessage fcMessage = new FCMessage(false, new FCMessage.Message(
+                        targetToken,
+                        new FCMessage.Notification(title, body),
+                        new FCMessage.Data(type, targetId)
+                ));
         try {
-            FCMessage fcMessage = new FCMessage(false, new FCMessage.Message(
-                            targetToken,
-                            new FCMessage.Notification(title, body),
-                            new FCMessage.Data(targetUrl)
-                    ));
-
             return objectMapper.writeValueAsString(fcMessage);
         } catch (JsonProcessingException e) {
             throw new BusinessException(FAILED_TO_GENERATE_FCM_JSON);
