@@ -20,6 +20,7 @@ bin/
 ### YML ###
 *.yml
 application.yml
+FCMAccountKey.json
 
 ### IntelliJ IDEA ###
 .idea
