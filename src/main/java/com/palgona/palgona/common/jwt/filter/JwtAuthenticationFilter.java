@@ -59,12 +59,16 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 saveAuthentication(member);
             }
         } catch (SecurityException | MalformedJwtException e) {
+            log.info(String.valueOf(AuthErrorCode.INVALID_SIGNATURE));
             request.setAttribute(EXCEPTION, AuthErrorCode.INVALID_SIGNATURE);
         } catch (ExpiredJwtException e) {
+            log.info(String.valueOf(AuthErrorCode.EXPIRED_TOKEN));
             request.setAttribute(EXCEPTION, AuthErrorCode.EXPIRED_TOKEN);
         } catch (UnsupportedJwtException e) {
+            log.info(String.valueOf(AuthErrorCode.NOT_SUPPORTED_TOKEN));
             request.setAttribute(EXCEPTION, AuthErrorCode.NOT_SUPPORTED_TOKEN);
         } catch (IllegalArgumentException e) {
+            log.info(String.valueOf(AuthErrorCode.ILLEGAL_TOKEN));
             request.setAttribute(EXCEPTION, AuthErrorCode.ILLEGAL_TOKEN);
         }
     }
