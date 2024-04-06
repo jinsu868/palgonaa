@@ -7,6 +7,7 @@ import com.palgona.palgona.common.dto.response.SliceResponse;
 import com.palgona.palgona.common.error.exception.BusinessException;
 import com.palgona.palgona.domain.member.Member;
 import com.palgona.palgona.domain.mileage.MileageHistory;
+import com.palgona.palgona.domain.mileage.MileageState;
 import com.palgona.palgona.domain.purchase.Purchase;
 import com.palgona.palgona.domain.purchase.PurchaseState;
 import com.palgona.palgona.dto.purchase.PurchaseCancelRequest;
@@ -49,6 +50,7 @@ public class PurchaseService {
                 .beforeMileage(seller.getMileage() - purchaseAmount)
                 .afterMileage(seller.getMileage())
                 .amount(purchaseAmount)
+                .state(MileageState.SALE)
                 .member(seller)
                 .build());
 
@@ -56,6 +58,7 @@ public class PurchaseService {
                 .beforeMileage(member.getMileage() + purchaseAmount)
                 .afterMileage(member.getMileage())
                 .amount(purchaseAmount)
+                .state(MileageState.USE)
                 .member(member)
                 .build());
     }
