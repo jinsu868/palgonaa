@@ -65,6 +65,7 @@ public class LoginController {
     }
 
     @PostMapping("/logout")
+    @Operation(summary = "로그아웃 api", description = "access, refresh 토큰을 헤더에 보내서 로그아웃을 진행한다.")
     public ResponseEntity<Void> logout(HttpServletRequest request) {
         String refreshToken = tokenExtractor.extractRefreshToken(request);
         String accessToken = tokenExtractor.extractAccessToken(request);
@@ -75,6 +76,8 @@ public class LoginController {
     }
 
     @PostMapping("/refresh-token")
+    @Operation(summary = "토큰 재발급 api",
+            description = "refresh-token을 통해 토큰을 재발급 받는다.")
     public ResponseEntity<Void> reissueToken(HttpServletRequest request, HttpServletResponse response) {
         String accessToken = tokenExtractor.extractAccessToken(request);
         String refreshToken = tokenExtractor.extractRefreshToken(request);

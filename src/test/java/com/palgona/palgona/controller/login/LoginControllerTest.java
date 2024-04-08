@@ -26,6 +26,7 @@ import static org.mockito.BDDMockito.given;
 import static org.springframework.http.HttpMethod.POST;
 import static org.springframework.http.MediaType.APPLICATION_JSON_VALUE;
 import static org.springframework.http.MediaType.IMAGE_PNG_VALUE;
+import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.print;
 
 @SpringBootTest(webEnvironment = WebEnvironment.RANDOM_PORT)
 @AutoConfigureMockMvc
@@ -93,7 +94,8 @@ class LoginControllerTest {
                         .file(image)
                 .header(AUTHORIZATION, BEARER + jwtUtils.createAccessToken(USER_SOCIAL_ID))
                 .contentType(MediaType.MULTIPART_FORM_DATA_VALUE))
-                .andExpect(MockMvcResultMatchers.status().isCreated());
+                .andExpect(MockMvcResultMatchers.status().isCreated())
+                .andDo(print());
     }
 
     @Test
