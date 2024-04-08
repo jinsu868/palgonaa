@@ -1,6 +1,7 @@
 package com.palgona.palgona.controller;
 
 import com.palgona.palgona.common.dto.CustomMemberDetails;
+import com.palgona.palgona.common.dto.response.SliceResponse;
 import com.palgona.palgona.domain.notification.Notification;
 import com.palgona.palgona.dto.NotificationResponse;
 import com.palgona.palgona.service.NotificationService;
@@ -21,14 +22,11 @@ public class NotificationController {
 
     @GetMapping
     @Operation(summary = "알림 리스트 조회 api", description = "멤버의 알림 리스트를 조회한다.")
-    public ResponseEntity<List<NotificationResponse>> getNotifications(@AuthenticationPrincipal CustomMemberDetails memberDetails,
-                                                                       @RequestParam(required = false) Long cursorId,
-                                                                       @RequestParam(defaultValue = "10") int size) {
+    public ResponseEntity<SliceResponse<NotificationResponse>> getNotifications(@AuthenticationPrincipal CustomMemberDetails memberDetails,
+                                                                       @RequestParam(required = false) String cursor,
+                                                                       @RequestParam(defaultValue = "20") int size) {
 
-        List<Notification> notifications = notificationService.readNotifications(memberDetails, cursorId == null ? Long.MAX_VALUE : cursorId, size);
-        List<NotificationResponse> response = notifications.stream()
-                .map(NotificationResponse::from)
-                .collect(Collectors.toList());
+        SliceResponse<NotificationResponse> response = notificationService.readNotifications(memberDetails, cursor, size);
 
         return ResponseEntity.ok(response);
     }

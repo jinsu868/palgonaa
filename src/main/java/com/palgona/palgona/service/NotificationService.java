@@ -1,10 +1,12 @@
 package com.palgona.palgona.service;
 
 import com.palgona.palgona.common.dto.CustomMemberDetails;
+import com.palgona.palgona.common.dto.response.SliceResponse;
 import com.palgona.palgona.common.error.exception.BusinessException;
 import com.palgona.palgona.domain.member.Member;
 import com.palgona.palgona.domain.notification.Notification;
-import com.palgona.palgona.repository.NotificationRepository;
+import com.palgona.palgona.dto.NotificationResponse;
+import com.palgona.palgona.repository.notification.NotificationRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
@@ -18,9 +20,8 @@ import static com.palgona.palgona.common.error.code.NotificationErrorCode.*;
 public class NotificationService {
     private final NotificationRepository notificationRepository;
 
-    public List<Notification> readNotifications(CustomMemberDetails memberDetails, Long cursorId, int size) {
-        Member member = memberDetails.getMember();
-        return notificationRepository.findByMemberIdAndCursor(member.getId(), cursorId, PageRequest.of(0, size));
+    public SliceResponse<NotificationResponse> readNotifications(CustomMemberDetails memberDetails, String cursor, int size) {
+        return notificationRepository.findAllByMemberAndCursor(memberDetails.getMember(), cursor, size);
     }
 
     public void deleteNotification(CustomMemberDetails memberDetails, Long id){
