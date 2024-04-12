@@ -24,17 +24,21 @@ public class Notification extends BaseTimeEntity {
     private String body;
 
     @Column(nullable = false)
-    private String targetUrl;
+    private Type type;
+
+    @Column(nullable = false)
+    private Long targetId;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "member_id", nullable = false)
     private Member member;
 
     @Builder
-    public Notification(String title, String body, String targetUrl, Member member){
+    public Notification(String title, String body,Type type, Long targetId, Member member){
         this.title = title;
         this.body = body;
-        this.targetUrl = targetUrl;
+        this.type = type;
+        this.targetId = targetId;
         this.member = member;
     }
 
@@ -42,7 +46,8 @@ public class Notification extends BaseTimeEntity {
         return Notification.builder()
                 .title(message.message().notification().title())
                 .body(message.message().notification().body())
-                .targetUrl(message.message().data().url())
+                .type(message.message().data().type())
+                .targetId(message.message().data().targetId())
                 .member(member)
                 .build();
     }
