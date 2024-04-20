@@ -38,6 +38,7 @@ public class Product extends BaseTimeEntity {
     private LocalDateTime deadline;
 
     @Column(nullable = false)
+    @Enumerated(EnumType.STRING)
     private ProductState productState;
 
     @ManyToOne(fetch = FetchType.LAZY)
