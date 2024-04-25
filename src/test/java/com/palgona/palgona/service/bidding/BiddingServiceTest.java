@@ -24,6 +24,7 @@ import java.time.LocalDateTime;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 
 class BiddingServiceTest {
@@ -56,6 +57,7 @@ class BiddingServiceTest {
         String socialId = "1111";
         Role role = Role.USER;
         Member member = Member.of(mileage, status, socialId, role);
+        member.updateMileage(1600);
 
         long productId = 1L;
         String productName = "상품";
@@ -75,8 +77,10 @@ class BiddingServiceTest {
         BiddingAttemptRequest request = new BiddingAttemptRequest(productId, attemptPrice);
 
         // when
-        when(productRepository.findById(productId)).thenReturn(Optional.of(product));
+        when(productRepository.findByIdWithPessimisticLock(productId)).thenReturn(Optional.of(product));
         when(biddingRepository.findHighestPriceByProduct(product)).thenReturn(Optional.of(existingBidding.getPrice()));
+        when(memberRepository.findByIdWithOptimisticLock(any())).thenReturn(Optional.of(member));
+        when(biddingRepository.findHighestPriceByMember(member)).thenReturn(Optional.of(0));
 
         // then
         assertDoesNotThrow(() -> biddingService.attemptBidding(member, request));
@@ -105,7 +109,7 @@ class BiddingServiceTest {
         BiddingAttemptRequest request = new BiddingAttemptRequest(productId, attemptPrice);
 
         // when
-        when(productRepository.findById(productId)).thenReturn(Optional.of(product));
+        when(productRepository.findByIdWithPessimisticLock(productId)).thenReturn(Optional.of(product));
 
         // then
         BusinessException exception = assertThrows(BusinessException.class,
@@ -139,7 +143,7 @@ class BiddingServiceTest {
         BiddingAttemptRequest request = new BiddingAttemptRequest(productId, attemptPrice);
 
         // when
-        when(productRepository.findById(productId)).thenReturn(Optional.of(product));
+        when(productRepository.findByIdWithPessimisticLock(productId)).thenReturn(Optional.of(product));
         when(biddingRepository.findHighestPriceByProduct(product)).thenReturn(Optional.of(existingBidding.getPrice()));
 
         // then
@@ -174,7 +178,7 @@ class BiddingServiceTest {
         BiddingAttemptRequest request = new BiddingAttemptRequest(productId, attemptPrice);
 
         // when
-        when(productRepository.findById(productId)).thenReturn(Optional.of(product));
+        when(productRepository.findByIdWithPessimisticLock(productId)).thenReturn(Optional.of(product));
         when(biddingRepository.findHighestPriceByProduct(product)).thenReturn(Optional.of(existingBidding.getPrice()));
 
         // then
