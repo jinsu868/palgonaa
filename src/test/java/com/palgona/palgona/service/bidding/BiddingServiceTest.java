@@ -79,7 +79,7 @@ class BiddingServiceTest {
         // when
         when(productRepository.findByIdWithPessimisticLock(productId)).thenReturn(Optional.of(product));
         when(biddingRepository.findHighestPriceByProduct(product)).thenReturn(Optional.of(existingBidding.getPrice()));
-        when(memberRepository.findByIdWithOptimisticLock(any())).thenReturn(Optional.of(member));
+        when(memberRepository.findByIdWithPessimisticLock(any())).thenReturn(Optional.of(member));
         when(biddingRepository.findHighestPriceByMember(member)).thenReturn(Optional.of(0));
 
         // then
