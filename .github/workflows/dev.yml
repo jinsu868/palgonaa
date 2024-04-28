@@ -3,7 +3,7 @@ name: Java CI with Gradle
 on:
   pull_request:
     branches: [ "develop" ]
-    #types: [ closed ]
+    types: [ closed ]
 
 jobs:
   build-and-upload:
