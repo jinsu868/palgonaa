@@ -18,11 +18,11 @@ public interface BiddingRepository extends JpaRepository<Bidding, Long> {
 
     Page<Bidding> findAllByProduct(Pageable pageable, Product product);
 
-    @Lock(LockModeType.OPTIMISTIC)
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("SELECT b FROM Bidding b "
             + "JOIN FETCH b.member m "
             + "WHERE b.state = 'ATTEMPT' AND b.product.deadline <= :currentDateTime")
-    List<Bidding> findExpiredBiddingsWithOptimisticLock(@Param("currentDateTime") LocalDateTime currentDateTime);
+    List<Bidding> findExpiredBiddingsWithPessimisticLock(@Param("currentDateTime") LocalDateTime currentDateTime);
     boolean existsByProduct(Product product);
 
     Optional<Integer> findHighestPriceByProduct(Product product);

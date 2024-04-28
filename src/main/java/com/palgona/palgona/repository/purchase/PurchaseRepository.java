@@ -14,13 +14,13 @@ import org.springframework.data.repository.query.Param;
 
 public interface PurchaseRepository extends JpaRepository<Purchase, Long>, PurchaseRepositoryCustom {
 
-    @Lock(LockModeType.OPTIMISTIC)
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select pc from Purchase pc join fetch pc.bidding b join fetch b.member m")
-    Optional<Purchase> findByIdWithSellerAndOptimisticLock(Long id);
+    Optional<Purchase> findByIdWithSellerAndPessimisticLock(Long id);
 
-    @Lock(LockModeType.OPTIMISTIC)
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select pc from Purchase pc join fetch pc.member m")
-    Optional<Purchase> findByIdWithBuyerAndOptimisticLock(Long id);
+    Optional<Purchase> findByIdWithBuyerAndPessimisticLock(Long id);
 
     @Query("select pc from Purchase pc "
             + "join fetch pc.member m "

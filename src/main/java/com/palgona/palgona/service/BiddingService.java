@@ -6,7 +6,6 @@ import static com.palgona.palgona.common.error.code.BiddingErrorCode.BIDDING_LOW
 import static com.palgona.palgona.common.error.code.MemberErrorCode.MEMBER_NOT_FOUND;
 import static com.palgona.palgona.common.error.code.ProductErrorCode.NOT_FOUND;
 
-import com.palgona.palgona.common.annotation.Retry;
 import com.palgona.palgona.common.error.exception.BusinessException;
 import com.palgona.palgona.domain.bidding.Bidding;
 import com.palgona.palgona.domain.bidding.BiddingState;
@@ -37,7 +36,6 @@ public class BiddingService {
     private final MemberRepository memberRepository;
 
     @Transactional
-    @Retry
     public void attemptBidding(Member member, BiddingAttemptRequest request) {
         Product product = findProductWithPessimisticLock(request);
 
@@ -60,7 +58,7 @@ public class BiddingService {
             throw new BusinessException(BIDDING_INSUFFICIENT_BID);
         }
 
-        Member biddingMember = findMemberWithOptimisticLock(member);
+        Member biddingMember = findMemberWithPessimisticLock(member);
         int previousBid = biddingRepository.findHighestPriceByMember(biddingMember).orElse(0);
         int extraCost = attemptPrice - previousBid;
         biddingMember.useMileage(extraCost);
@@ -83,9 +81,8 @@ public class BiddingService {
     }
 
     @Transactional
-    @Retry
     public void checkBiddingExpiration() {
-        List<Bidding> expiredBiddings = biddingRepository.findExpiredBiddingsWithOptimisticLock(LocalDateTime.now());
+        List<Bidding> expiredBiddings = biddingRepository.findExpiredBiddingsWithPessimisticLock(LocalDateTime.now());
 
         Map<Long, Bidding> highestPriceBiddings = new HashMap<>();
         Map<Member, Integer> memberHighestBids = new HashMap<>();
@@ -134,8 +131,8 @@ public class BiddingService {
         }
     }
 
-    private Member findMemberWithOptimisticLock(Member member) {
-        return memberRepository.findByIdWithOptimisticLock(member.getId())
+    private Member findMemberWithPessimisticLock(Member member) {
+        return memberRepository.findByIdWithPessimisticLock(member.getId())
                 .orElseThrow(() -> new BusinessException(MEMBER_NOT_FOUND));
     }
 }

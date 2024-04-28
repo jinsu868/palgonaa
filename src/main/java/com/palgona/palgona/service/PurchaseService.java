@@ -2,7 +2,6 @@ package com.palgona.palgona.service;
 
 import static com.palgona.palgona.common.error.code.PurchaseErrorCode.PURCHASE_NOT_FOUND;
 
-import com.palgona.palgona.common.annotation.Retry;
 import com.palgona.palgona.common.dto.response.SliceResponse;
 import com.palgona.palgona.common.error.exception.BusinessException;
 import com.palgona.palgona.domain.member.Member;
@@ -36,9 +35,8 @@ public class PurchaseService {
     }
 
     @Transactional
-    @Retry
     public void confirmPurchase(Member member, Long id) {
-        Purchase purchase = findPurchaseWithSellerAndOptimisticLock(id);
+        Purchase purchase = findPurchaseWithSellerAndPessimisticLock(id);
         purchase.validateOwner(member);
         purchase.validateDeadline(LocalDateTime.now());
         purchase.confirm();
@@ -64,9 +62,8 @@ public class PurchaseService {
     }
 
     @Transactional
-    @Retry
     public void cancelPurchase(Member member, Long id, PurchaseCancelRequest request) {
-        Purchase purchase = findPurchaseWithBuyerAndOptimisticLock(id);
+        Purchase purchase = findPurchaseWithBuyerAndPessimisticLock(id);
         purchase.validateOwner(member);
         purchase.validateDeadline(LocalDateTime.now());
         purchase.cancel();
@@ -90,13 +87,13 @@ public class PurchaseService {
         purchaseRepository.bulkUpdateState(purchaseCanceledIds, PurchaseState.CANCEL);
     }
 
-    private Purchase findPurchaseWithBuyerAndOptimisticLock(Long id) {
-        return purchaseRepository.findByIdWithBuyerAndOptimisticLock(id)
+    private Purchase findPurchaseWithBuyerAndPessimisticLock(Long id) {
+        return purchaseRepository.findByIdWithBuyerAndPessimisticLock(id)
                 .orElseThrow(() -> new BusinessException(PURCHASE_NOT_FOUND));
     }
 
-    private Purchase findPurchaseWithSellerAndOptimisticLock(Long id) {
-        return purchaseRepository.findByIdWithSellerAndOptimisticLock(id)
+    private Purchase findPurchaseWithSellerAndPessimisticLock(Long id) {
+        return purchaseRepository.findByIdWithSellerAndPessimisticLock(id)
                 .orElseThrow(() -> new BusinessException(PURCHASE_NOT_FOUND));
     }
 
