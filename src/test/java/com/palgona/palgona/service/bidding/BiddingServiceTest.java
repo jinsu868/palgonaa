@@ -11,6 +11,8 @@ import com.palgona.palgona.domain.product.Product;
 import com.palgona.palgona.domain.product.ProductState;
 import com.palgona.palgona.dto.BiddingAttemptRequest;
 import com.palgona.palgona.repository.BiddingRepository;
+import com.palgona.palgona.repository.purchase.PurchaseRepository;
+import com.palgona.palgona.repository.member.MemberRepository;
 import com.palgona.palgona.repository.product.ProductRepository;
 import com.palgona.palgona.service.BiddingService;
 import org.junit.jupiter.api.BeforeEach;
@@ -22,6 +24,7 @@ import java.time.LocalDateTime;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 
 class BiddingServiceTest {
@@ -32,12 +35,18 @@ class BiddingServiceTest {
     @Mock
     private ProductRepository productRepository;
 
+    @Mock
+    private PurchaseRepository purchaseRepository;
+
+    @Mock
+    private MemberRepository memberRepository;
+
     private BiddingService biddingService;
 
     @BeforeEach
     void setUp() {
         MockitoAnnotations.openMocks(this);
-        biddingService = new BiddingService(biddingRepository, productRepository);
+        biddingService = new BiddingService(biddingRepository, productRepository, purchaseRepository, memberRepository);
     }
 
     @Test
@@ -48,6 +57,7 @@ class BiddingServiceTest {
         String socialId = "1111";
         Role role = Role.USER;
         Member member = Member.of(mileage, status, socialId, role);
+        member.updateMileage(1600);
 
         long productId = 1L;
         String productName = "상품";
@@ -67,8 +77,10 @@ class BiddingServiceTest {
         BiddingAttemptRequest request = new BiddingAttemptRequest(productId, attemptPrice);
 
         // when
-        when(productRepository.findById(productId)).thenReturn(Optional.of(product));
+        when(productRepository.findByIdWithPessimisticLock(productId)).thenReturn(Optional.of(product));
         when(biddingRepository.findHighestPriceByProduct(product)).thenReturn(Optional.of(existingBidding.getPrice()));
+        when(memberRepository.findByIdWithPessimisticLock(any())).thenReturn(Optional.of(member));
+        when(biddingRepository.findHighestPriceByMember(member)).thenReturn(Optional.of(0));
 
         // then
         assertDoesNotThrow(() -> biddingService.attemptBidding(member, request));
@@ -97,7 +109,7 @@ class BiddingServiceTest {
         BiddingAttemptRequest request = new BiddingAttemptRequest(productId, attemptPrice);
 
         // when
-        when(productRepository.findById(productId)).thenReturn(Optional.of(product));
+        when(productRepository.findByIdWithPessimisticLock(productId)).thenReturn(Optional.of(product));
 
         // then
         BusinessException exception = assertThrows(BusinessException.class,
@@ -131,7 +143,7 @@ class BiddingServiceTest {
         BiddingAttemptRequest request = new BiddingAttemptRequest(productId, attemptPrice);
 
         // when
-        when(productRepository.findById(productId)).thenReturn(Optional.of(product));
+        when(productRepository.findByIdWithPessimisticLock(productId)).thenReturn(Optional.of(product));
         when(biddingRepository.findHighestPriceByProduct(product)).thenReturn(Optional.of(existingBidding.getPrice()));
 
         // then
@@ -166,7 +178,7 @@ class BiddingServiceTest {
         BiddingAttemptRequest request = new BiddingAttemptRequest(productId, attemptPrice);
 
         // when
-        when(productRepository.findById(productId)).thenReturn(Optional.of(product));
+        when(productRepository.findByIdWithPessimisticLock(productId)).thenReturn(Optional.of(product));
         when(biddingRepository.findHighestPriceByProduct(product)).thenReturn(Optional.of(existingBidding.getPrice()));
 
         // then

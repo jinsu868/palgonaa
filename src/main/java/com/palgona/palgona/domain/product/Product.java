@@ -1,8 +1,6 @@
 package com.palgona.palgona.domain.product;
 
 import com.palgona.palgona.common.entity.BaseTimeEntity;
-import com.palgona.palgona.domain.bidding.Bidding;
-import com.palgona.palgona.domain.bookmark.Bookmark;
 import com.palgona.palgona.domain.member.Member;
 import jakarta.persistence.*;
 

@@ -9,9 +9,15 @@ import org.springframework.stereotype.Service;
 public class BatchScheduler {
 
     private final BiddingService biddingService;
+    private final PurchaseService purchaseService;
 
-    @Scheduled(cron = "0/30 * * * * ?") // 5분 주기로 실행
+    @Scheduled(cron = "0 * * * * *")
     public void checkBiddingExpiration() {
         biddingService.checkBiddingExpiration();
+    }
+
+    @Scheduled(cron = "0 * * * * *")
+    public void checkPurchaseExpiration() {
+        purchaseService.checkPurchaseExpiration();
     }
 }

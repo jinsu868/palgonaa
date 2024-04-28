@@ -12,7 +12,8 @@ public enum ProductErrorCode implements ErrorCode {
     DELETED_PRODUCT(HttpStatus.BAD_REQUEST, "P_003", "현재 삭제된 상품입니다."),
     INVALID_PRICE(HttpStatus.BAD_REQUEST, "P_004", "유효하지 않은 상품 가격입니다."),
     INVALID_CATEGORY(HttpStatus.BAD_REQUEST, "P_005", "유효하지 않은 상품 카테고리 입니다."),
-    INVALID_DEADLINE(HttpStatus.BAD_REQUEST, "P_006", "상품 판매 마감기한은 하루 이상이여야 합니다.");
+    INVALID_DEADLINE(HttpStatus.BAD_REQUEST, "P_006", "상품 판매 마감기한은 하루 이상이여야 합니다."),
+    NOT_FOUND(HttpStatus.OK, "P_007", "해당 상품이 존재하지 않습니다.");
 
     private final HttpStatus status;
     private final String code;
