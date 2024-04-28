@@ -35,9 +35,6 @@ public class Member extends BaseTimeEntity {
 
     private String profileImage;
 
-    @Version
-    Long version;
-
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private Status status;
