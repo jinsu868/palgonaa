@@ -26,7 +26,7 @@ public class S3Service {
 
     public String upload(MultipartFile file) {
         String imageUrl = "";
-        String fileName = createFileName(file.getOriginalFilename());
+        String fileName = createFileName(UUID.randomUUID().toString());
         ObjectMetadata objectMetadata = new ObjectMetadata();
         objectMetadata.setContentLength(file.getSize());
         objectMetadata.setContentType(file.getContentType());
