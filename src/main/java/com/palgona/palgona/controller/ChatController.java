@@ -7,6 +7,8 @@ import com.palgona.palgona.dto.chat.*;
 import com.palgona.palgona.service.ChatService;
 import io.swagger.v3.oas.annotations.Operation;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.http.ResponseEntity;
 import org.springframework.messaging.handler.annotation.MessageMapping;
 import org.springframework.messaging.handler.annotation.Payload;
@@ -21,10 +23,12 @@ import java.util.stream.Collectors;
 
 @Controller
 @RequiredArgsConstructor
+@Slf4j
 @RequestMapping("/api/v1/chats")
 public class ChatController {
     private final ChatService chatService;
     private final SimpMessageSendingOperations messagingTemplate;
+    private final RedisTemplate<String, Object> redisChatTemplate;
 
     // TODO
     // 1번 멤버로 강제로 바꾸는 코드 없애야함.
@@ -42,7 +46,8 @@ public class ChatController {
     public void sendMessage(@Payload ChatMessageRequest message) {
         ChatMessage savedMessage = chatService.sendMessage(message);
         ChatMessageResponse messageResponse = ChatMessageResponse.from(savedMessage);
-        messagingTemplate.convertAndSend("/sub/topic/chat/" + savedMessage.getRoom().getId(), messageResponse);
+        redisChatTemplate.convertAndSend("chatroom", messageResponse);
+//        messagingTemplate.convertAndSend("/sub/chatroom/" + savedMessage.getRoom().getId(), messageResponse);
     }
 
     @PostMapping
