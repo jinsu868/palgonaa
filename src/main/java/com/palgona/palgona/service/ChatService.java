@@ -16,12 +16,14 @@ import com.palgona.palgona.repository.ChatMessageRepository;
 import com.palgona.palgona.repository.ChatReadStatusRepository;
 import com.palgona.palgona.repository.ChatRoomRepository;
 import com.palgona.palgona.repository.member.MemberRepository;
+import com.palgona.palgona.service.image.S3Service;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.util.Arrays;
 import java.util.List;
+import org.springframework.web.multipart.MultipartFile;
 
 @Service
 @RequiredArgsConstructor
@@ -30,6 +32,7 @@ public class ChatService {
     private final ChatMessageRepository chatMessageRepository;
     private final MemberRepository memberRepository;
     private final ChatReadStatusRepository chatReadStatusRepository;
+    private final S3Service s3Service;
 
     @Transactional
     public ChatMessage sendMessage(ChatMessageRequest messageDto) {
@@ -43,7 +46,13 @@ public class ChatService {
             throw new BusinessException(ChatErrorCode.INVALID_MEMBER);
         }
 
-        ChatMessage message = ChatMessage.builder().sender(sender).receiver(receiver).message(messageDto.message()).room(room).type(ChatType.TEXT).build();
+        ChatMessage message = ChatMessage.builder()
+                .sender(sender)
+                .receiver(receiver)
+                .message(messageDto.message())
+                .room(room)
+                .type(ChatType.TEXT)
+                .build();
         return chatMessageRepository.save(message);
     }
 
@@ -60,7 +69,8 @@ public class ChatService {
     public void readMessage(Member member, ReadMessageRequest request) {
         // 가장 최근에 읽은 데이터를 표시해야함.
         // 현재 연결되어서 바로 읽었는지 확인이 필요함.
-        ChatMessage message = chatMessageRepository.findById(request.messageId()).orElseThrow(() -> new BusinessException(ChatErrorCode.MESSAGE_NOT_FOUND));
+        ChatMessage message = chatMessageRepository.findById(request.messageId())
+                .orElseThrow(() -> new BusinessException(ChatErrorCode.MESSAGE_NOT_FOUND));
         ChatReadStatus chatReadStatus = chatReadStatusRepository.findByMemberAndRoom(member, message.getRoom());
         chatReadStatus.updateCursor(message.getId());
         chatReadStatusRepository.save(chatReadStatus);
@@ -89,22 +99,41 @@ public class ChatService {
         }
 
         // 값을 가져온 후 가장 최근 데이터로 다시 업데이트
-        List<ChatMessage> chatMessages = chatMessageRepository.findMessagesAfterCursor(roomId, chatReadStatus.getMessageCursor());
+        List<ChatMessage> chatMessages = chatMessageRepository.findMessagesAfterCursor(roomId,
+                chatReadStatus.getMessageCursor());
         chatReadStatus.updateCursor(chatMessages.get(chatMessages.size() - 1).getId());
         chatReadStatusRepository.save(chatReadStatus);
 
         return chatMessages;
     }
 
+    public ChatMessage uploadChatFile(ChatMessageRequest messageDto, MultipartFile file) {
+        Member sender = findMember(messageDto.senderId());
+        Member receiver = findMember(messageDto.receiverId());
+        ChatRoom room = findChatRoom(messageDto.roomId());
+
+        String url = s3Service.upload(file);
+        ChatMessage message = ChatMessage.builder()
+                .sender(sender)
+                .receiver(receiver)
+                .room(room)
+                .message(url)
+                .type(ChatType.IMAGE)
+                .build();
+        return chatMessageRepository.save(message);
+    }
     private Member findMember(Long visitorId) {
-        return memberRepository.findById(visitorId).orElseThrow(() -> new BusinessException(MemberErrorCode.MEMBER_NOT_EXIST));
+        return memberRepository.findById(visitorId)
+                .orElseThrow(() -> new BusinessException(MemberErrorCode.MEMBER_NOT_EXIST));
     }
 
     private ChatRoom findChatRoom(Long roomId) {
-        return chatRoomRepository.findById(roomId).orElseThrow(() -> new BusinessException(ChatErrorCode.CHATROOM_NOT_FOUND));
+        return chatRoomRepository.findById(roomId)
+                .orElseThrow(() -> new BusinessException(ChatErrorCode.CHATROOM_NOT_FOUND));
     }
 
     private ChatRoom findOrCreateChatRoom(Member sender, Member receiver) {
-        return chatRoomRepository.findBySenderAndReceiver(sender, receiver).orElseGet(() -> chatRoomRepository.save(ChatRoom.builder().sender(sender).receiver(receiver).build()));
+        return chatRoomRepository.findBySenderAndReceiver(sender, receiver)
+                .orElseGet(() -> chatRoomRepository.save(ChatRoom.builder().sender(sender).receiver(receiver).build()));
     }
 }

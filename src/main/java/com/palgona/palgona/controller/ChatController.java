@@ -30,9 +30,6 @@ public class ChatController {
     private final SimpMessageSendingOperations messagingTemplate;
     private final RedisTemplate<String, Object> redisChatTemplate;
 
-    // TODO
-    // 1번 멤버로 강제로 바꾸는 코드 없애야함.
-
     private static ChatRoomResponse mapToResponse(ChatRoom chatRoom) {
         return new ChatRoomResponse(chatRoom.getId(), chatRoom.getSender().getId(), chatRoom.getReceiver().getId());
     }
@@ -42,33 +39,40 @@ public class ChatController {
     }
 
     @MessageMapping("/sendMessage")
-    @Operation(summary = "채팅 발송 api", description = "socket통신으로 체팅을 받아 발송한다.")
+    @Operation(summary = "채팅 발송 api",
+            description = "socket통신으로 체팅을 받아 발송한다.")
     public void sendMessage(@Payload ChatMessageRequest message) {
         ChatMessage savedMessage = chatService.sendMessage(message);
         ChatMessageResponse messageResponse = ChatMessageResponse.from(savedMessage);
         redisChatTemplate.convertAndSend("chatroom", messageResponse);
-//        messagingTemplate.convertAndSend("/sub/chatroom/" + savedMessage.getRoom().getId(), messageResponse);
+        //        messagingTemplate.convertAndSend("/sub/chatroom/" + savedMessage.getRoom().getId(), messageResponse);
     }
 
     @PostMapping
-    @Operation(summary = "채팅방 생성 api", description = "사용자와 상대방의 방이 있는지 확인하고 방을 리턴한다.")
-    public ResponseEntity<ChatRoomResponse> createChatRoom(@RequestBody ChatRoomCreateRequest request, @AuthenticationPrincipal CustomMemberDetails member) {
+    @Operation(summary = "채팅방 생성 api",
+            description = "사용자와 상대방의 방이 있는지 확인하고 방을 리턴한다.")
+    public ResponseEntity<ChatRoomResponse> createChatRoom(@RequestBody ChatRoomCreateRequest request,
+                                                           @AuthenticationPrincipal CustomMemberDetails member) {
         ChatRoom room = chatService.createRoom(member.getMember(), request);
 
         return ResponseEntity.ok(mapToResponse(room));
     }
 
     @GetMapping
-    @Operation(summary = "채팅방 목록 조회 api", description = "현재 유저의 모든 채팅방 목록과 안읽은 채팅수를 불러온다.")
-    public ResponseEntity<List<ChatRoomCountResponse>> readChatRooms(@AuthenticationPrincipal CustomMemberDetails member) {
+    @Operation(summary = "채팅방 목록 조회 api",
+            description = "현재 유저의 모든 채팅방 목록과 안읽은 채팅수를 불러온다.")
+    public ResponseEntity<List<ChatRoomCountResponse>> readChatRooms(
+            @AuthenticationPrincipal CustomMemberDetails member) {
         List<ChatRoomCountResponse> rooms = chatService.getRoomList(member.getMember());
 
         return ResponseEntity.ok(rooms);
     }
 
     @GetMapping("/{roomId}")
-    @Operation(summary = "채팅방의 채팅 목록 조회 api", description = "현재 채팅방의 채팅 목록을 불러온다.")
-    public ResponseEntity<List<ChatMessageResponse>> readRoomChat(@AuthenticationPrincipal CustomMemberDetails member, @PathVariable Long roomId) {
+    @Operation(summary = "채팅방의 채팅 목록 조회 api",
+            description = "현재 채팅방의 채팅 목록을 불러온다.")
+    public ResponseEntity<List<ChatMessageResponse>> readRoomChat(@AuthenticationPrincipal CustomMemberDetails member,
+                                                                  @PathVariable Long roomId) {
         List<ChatMessage> chats = chatService.getMessageByRoom(member.getMember(), roomId);
         List<ChatMessageResponse> responses = chats.stream().map(ChatMessageResponse::from).toList();
 
@@ -76,8 +80,10 @@ public class ChatController {
     }
 
     @GetMapping("/{roomId}/unread")
-    @Operation(summary = "채팅방의 안읽은 채팅 목록 조회 api", description = "현재 채팅방의 안읽은 채팅 목록을 불러온다.")
-    public ResponseEntity<List<ChatMessageResponse>> readUnreadRoomChat(@AuthenticationPrincipal CustomMemberDetails member, @PathVariable Long roomId) {
+    @Operation(summary = "채팅방의 안읽은 채팅 목록 조회 api",
+            description = "현재 채팅방의 안읽은 채팅 목록을 불러온다.")
+    public ResponseEntity<List<ChatMessageResponse>> readUnreadRoomChat(
+            @AuthenticationPrincipal CustomMemberDetails member, @PathVariable Long roomId) {
         List<ChatMessage> chats = chatService.getUnreadMessagesByRoom(member.getMember(), roomId);
         List<ChatMessageResponse> responses = chats.stream().map(ChatMessageResponse::from).toList();
 
@@ -93,11 +99,14 @@ public class ChatController {
     }
 
     @PostMapping("/{roomId}/image")
-    @Operation(summary = "채팅방 이미지 업로드 api", description = "채팅방의 image를 업로드한다.")
-    public ResponseEntity<String> uploadChatImage(@RequestPart(value = "files") List<MultipartFile> files, @AuthenticationPrincipal CustomMemberDetails member) {
-        // TODO
-
-        return ResponseEntity.ok(null);
+    @Operation(summary = "채팅방 이미지 업로드 api",
+            description = "채팅방의 image를 업로드한다.")
+    public ResponseEntity<ChatMessageResponse> uploadChatImage(@RequestPart(value = "files") MultipartFile file,
+                                                               @AuthenticationPrincipal CustomMemberDetails member,
+                                                               ChatMessageRequest request) {
+        ChatMessage message = chatService.uploadChatFile(request, file);
+        ChatMessageResponse response = ChatMessageResponse.from(message);
+        return ResponseEntity.ok(response);
     }
 
     @PostMapping("/read")
