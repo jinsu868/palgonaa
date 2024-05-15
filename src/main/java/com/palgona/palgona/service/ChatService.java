@@ -122,6 +122,22 @@ public class ChatService {
                 .build();
         return chatMessageRepository.save(message);
     }
+
+    public ChatRoom exitChatRoom(Long roomId, Member member){
+        ChatRoom room = findChatRoom(roomId);
+        if (!room.hasMember(member)) {
+            throw new BusinessException(ChatErrorCode.INVALID_MEMBER);
+        }
+        // receiver인지 sender인지 확인후 나감
+        if (room.getReceiver() == member){
+            room.setLeaveReceiver(true);
+        } else if (room.getSender() == member) {
+            room.setLeaveSender(true);
+        }
+
+        return chatRoomRepository.save(room);
+    }
+
     private Member findMember(Long visitorId) {
         return memberRepository.findById(visitorId)
                 .orElseThrow(() -> new BusinessException(MemberErrorCode.MEMBER_NOT_EXIST));

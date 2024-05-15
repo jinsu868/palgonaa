@@ -6,6 +6,7 @@ import jakarta.persistence.*;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.Setter;
 import org.hibernate.annotations.ColumnDefault;
 
 import java.util.List;
@@ -19,13 +20,15 @@ public class ChatRoom extends BaseTimeEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @Setter
     @ColumnDefault("false")
     @Column(columnDefinition = "TINYINT(1)")
-    private boolean isLeaveOwner;
+    private boolean isLeaveSender;
 
+    @Setter
     @ColumnDefault("false")
     @Column(columnDefinition = "TINYINT(1)")
-    private boolean isLeaveVisitor;
+    private boolean isLeaveReceiver;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "sender_id", nullable = false)
@@ -42,8 +45,8 @@ public class ChatRoom extends BaseTimeEntity {
     ChatRoom(Member sender, Member receiver){
         this.sender = sender;
         this.receiver = receiver;
-        this.isLeaveOwner = false;
-        this.isLeaveVisitor = false;
+        this.isLeaveSender = false;
+        this.isLeaveReceiver = false;
     }
 
     public boolean hasMember(Member member) {

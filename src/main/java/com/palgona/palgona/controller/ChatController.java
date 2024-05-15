@@ -31,7 +31,11 @@ public class ChatController {
     private final RedisTemplate<String, Object> redisChatTemplate;
 
     private static ChatRoomResponse mapToResponse(ChatRoom chatRoom) {
-        return new ChatRoomResponse(chatRoom.getId(), chatRoom.getSender().getId(), chatRoom.getReceiver().getId());
+        return new ChatRoomResponse(chatRoom.getId(),
+                chatRoom.getSender().getId(),
+                chatRoom.getReceiver().getId(),
+                chatRoom.isLeaveReceiver(),
+                chatRoom.isLeaveSender());
     }
 
     private static List<ChatRoomResponse> mapListToResponse(List<ChatRoom> chatRooms) {
@@ -91,11 +95,13 @@ public class ChatController {
     }
 
     @PostMapping("/{roomId}/exit")
-    @Operation(summary = "채팅방 나가기 api", description = "현재 채팅방을 나간다.")
-    public ResponseEntity<String> exitChatRoom(@AuthenticationPrincipal CustomMemberDetails member, @PathVariable Long roomId) {
-        // TODO
-
-        return ResponseEntity.ok(null);
+    @Operation(summary = "채팅방 나가기 api",
+            description = "현재 채팅방을 나간다.")
+    public ResponseEntity<ChatRoomResponse> exitChatRoom(@AuthenticationPrincipal CustomMemberDetails member,
+                                                         @PathVariable Long roomId) {
+        ChatRoom chatRoom = chatService.exitChatRoom(roomId, member.getMember());
+        ChatRoomResponse response = ChatRoomResponse.from(chatRoom);
+        return ResponseEntity.ok(response);
     }
 
     @PostMapping("/{roomId}/image")
@@ -110,8 +116,10 @@ public class ChatController {
     }
 
     @PostMapping("/read")
-    @Operation(summary = "읽은 채팅 최신화 api", description = "가장 마지막에 읽은 채팅을 표시한다.")
-    public ResponseEntity<String> readMessage(@AuthenticationPrincipal CustomMemberDetails member, @RequestBody ReadMessageRequest request) {
+    @Operation(summary = "읽은 채팅 최신화 api",
+            description = "가장 마지막에 읽은 채팅을 표시한다.")
+    public ResponseEntity<String> readMessage(@AuthenticationPrincipal CustomMemberDetails member,
+                                              @RequestBody ReadMessageRequest request) {
         chatService.readMessage(member.getMember(), request);
 
         return ResponseEntity.ok(null);
