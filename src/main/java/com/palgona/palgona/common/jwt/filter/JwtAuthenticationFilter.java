@@ -52,9 +52,9 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             String accessToken = tokenExtractor.extractAccessToken(request);
             if (!jwtUtils.isExpired(accessToken) && !redisUtils.isBlacklist(accessToken)) {
                 String socialId = jwtUtils.extractSocialId(accessToken)
-                        .orElseThrow(() -> new IllegalArgumentException());
+                        .orElseThrow(() -> new IllegalArgumentException("socialID 값이 잘못되었습니다."));
                 Member member = memberRepository.findBySocialId(socialId)
-                        .orElseThrow(() -> new IllegalArgumentException());
+                        .orElseThrow(() -> new IllegalArgumentException("없는 유저입니다."));
 
                 saveAuthentication(member);
             }
@@ -68,15 +68,15 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             log.info(String.valueOf(AuthErrorCode.NOT_SUPPORTED_TOKEN));
             request.setAttribute(EXCEPTION, AuthErrorCode.NOT_SUPPORTED_TOKEN);
         } catch (IllegalArgumentException e) {
-            log.info(String.valueOf(AuthErrorCode.ILLEGAL_TOKEN));
+            log.info(AuthErrorCode.ILLEGAL_TOKEN + e.getMessage());
             request.setAttribute(EXCEPTION, AuthErrorCode.ILLEGAL_TOKEN);
         }
     }
 
     private void saveAuthentication(Member member) {
         CustomMemberDetails customMemberDetails = new CustomMemberDetails(member);
-        Authentication authentication = new UsernamePasswordAuthenticationToken(
-                customMemberDetails, null,
+        Authentication authentication = new UsernamePasswordAuthenticationToken(customMemberDetails,
+                null,
                 authoritiesMapper.mapAuthorities(customMemberDetails.getAuthorities()));
         SecurityContextHolder.getContext().setAuthentication(authentication);
     }
