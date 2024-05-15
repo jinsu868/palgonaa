@@ -1,6 +1,6 @@
 package com.palgona.palgona.dto.chat;
 
-qimport com.palgona.palgona.domain.chat.ChatRoom;
+import com.palgona.palgona.domain.chat.ChatRoom;
 
 public record ChatRoomResponse(Long id,
                                Long senderId,
