@@ -91,21 +91,29 @@ public class ProductService {
         }
     }
 
-    public ProductDetailResponse readProduct(Long productId){
+    public ProductDetailResponse readProduct(Long productId, CustomMemberDetails memberDetail){
+        Member member = memberDetail.getMember();
+
         //1. 상품 정보 가져오기(상품, 멤버, 최고 입찰가, 북마크 개수)
         //Todo: 1-2. 채팅 개수 정보 가져오기
         ProductDetailQueryResponse queryResponse = productRepository.findProductWithAll(productId)
-                .orElseThrow(() -> new IllegalArgumentException());
+                .orElseThrow(() -> new BusinessException(NOT_FOUND));
+
+        Product product = queryResponse.product();
 
         //2. 상품이 삭제되었는지 확인
-        if(ProductState.valueOf(queryResponse.productState()) == ProductState.DELETED){
+        if(product.getProductState() == ProductState.DELETED){
             throw new BusinessException(DELETED_PRODUCT);
         }
 
         //3. 상품 이미지 가져오기
-        List<String> imageUrls = productImageRepository.findProductImageUrlsByProduct(queryResponse.productId());
+        List<String> imageUrls = productImageRepository.findProductImageUrlsByProduct(product.getId());
 
-        return ProductDetailResponse.from(queryResponse, imageUrls);
+        //4. 해당 상품에 대한 사용자 알림 상태 확인
+        boolean isSilent = silentNotificationsRepository.findByMemberAndProduct(member, product)
+                .isPresent();
+
+        return ProductDetailResponse.from(queryResponse, imageUrls, isSilent);
     }
 
     @Transactional(readOnly = true)
@@ -124,7 +132,7 @@ public class ProductService {
         Member member = memberDetails.getMember();
 
         Product product = productRepository.findById(productId)
-                .orElseThrow(() -> new IllegalArgumentException());
+                .orElseThrow(() -> new BusinessException(NOT_FOUND));
 
 
         //1. 상품에 대한 권한 확인
@@ -162,7 +170,7 @@ public class ProductService {
         Member member = memberDetails.getMember();
 
         Product product = productRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException());
+                .orElseThrow(() -> new BusinessException(NOT_FOUND));
 
         //0. 상품 유효성 확인
         checkProduct(request.initialPrice(), request.category(), request.deadline());

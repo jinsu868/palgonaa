@@ -20,12 +20,14 @@ public record ProductDetailResponse(
         String ownerImgUrl,
         Integer highestPrice,
         Integer bookmarkCount,
-        List<String> imageUrls
+        List<String> imageUrls,
+        boolean isSilent
 ) {
     public static ProductDetailResponse from(
             ProductDetailQueryResponse queryResponse,
-            List<String> files
-    ){
+            List<String> files,
+            boolean isSilent
+            ){
         return new ProductDetailResponse(
                 queryResponse.product().getId(),
                 queryResponse.product().getName(),
@@ -39,7 +41,8 @@ public record ProductDetailResponse(
                 queryResponse.ownerImgUrl(),
                 queryResponse.highestBid(),
                 queryResponse.bookmarkCount(),
-                files
+                files,
+                isSilent
         );
     }
 
