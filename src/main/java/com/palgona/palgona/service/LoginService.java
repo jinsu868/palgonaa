@@ -38,7 +38,8 @@ import org.springframework.web.multipart.MultipartFile;
 @Transactional
 public class LoginService {
 
-    private static final String DEFAULT_IMAGE = "https://palgona.s3.ap-northeast-2.amazonaws.com/b2b9ab44-739a-4030-92c7-ea84f8f40c8f.png";
+    @Value("${s3.default.image}")
+    private String defaultImage;
 
     private static final String BEARER = "Bearer ";
 
@@ -161,6 +162,6 @@ public class LoginService {
         if (image != null) {
             return s3Service.upload(image);
         }
-        return DEFAULT_IMAGE;
+        return defaultImage;
     }
 }
