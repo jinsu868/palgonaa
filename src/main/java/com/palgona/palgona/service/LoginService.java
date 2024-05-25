@@ -38,6 +38,9 @@ import org.springframework.web.multipart.MultipartFile;
 @Transactional
 public class LoginService {
 
+    @Value("${s3.default.image}")
+    private String defaultImage;
+
     private static final String BEARER = "Bearer ";
 
     @Value("${spring.jwt.access.expireMs}")
@@ -53,9 +56,9 @@ public class LoginService {
         validateRoleOfMember(member);
         String nickName = memberCreateRequest.nickName();
         MultipartFile image = memberCreateRequest.image();
-
         validateNameDuplicated(nickName);
-        String imageUrl = s3Service.upload(image);
+        String imageUrl = uploadImage(image);
+
         member.updateNickName(nickName);
         member.updateProfileImage(imageUrl);
         member.signUp();
@@ -153,5 +156,12 @@ public class LoginService {
         String socialId = loginMember.getUsername();
         return memberRepository.findBySocialId(socialId).orElseThrow(
                 () -> new BusinessException(MEMBER_NOT_FOUND));
+    }
+
+    private String uploadImage(MultipartFile image) {
+        if (image != null) {
+            return s3Service.upload(image);
+        }
+        return defaultImage;
     }
 }
