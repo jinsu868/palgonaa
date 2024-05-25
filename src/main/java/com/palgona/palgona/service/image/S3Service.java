@@ -25,6 +25,8 @@ public class S3Service {
     private final AmazonS3 AmazonS3;
 
     public String upload(MultipartFile file) {
+        log.info("file name : {}", file.getName());
+        log.info("file OriginalName : {}", file.getOriginalFilename());
         String imageUrl = "";
         String fileName = createFileName(file.getOriginalFilename());
         ObjectMetadata objectMetadata = new ObjectMetadata();
