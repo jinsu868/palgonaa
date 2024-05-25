@@ -1,5 +1,17 @@
 package com.palgona.palgona.service.chat;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
 import com.palgona.palgona.common.error.code.ChatErrorCode;
 import com.palgona.palgona.common.error.exception.BusinessException;
 import com.palgona.palgona.domain.chat.ChatMessage;
@@ -17,22 +29,18 @@ import com.palgona.palgona.repository.ChatReadStatusRepository;
 import com.palgona.palgona.repository.ChatRoomRepository;
 import com.palgona.palgona.repository.member.MemberRepository;
 import com.palgona.palgona.service.ChatService;
+import com.palgona.palgona.service.image.S3Service;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
-
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.Optional;
-
-import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.BDDMockito.given;
-import static org.mockito.Mockito.*;
+import org.springframework.web.multipart.MultipartFile;
 
 class ChatServiceTest {
     @Mock
@@ -49,6 +57,10 @@ class ChatServiceTest {
 
     @InjectMocks
     private ChatService chatService;
+
+    @Mock
+    private S3Service s3Service;
+
 
     @BeforeEach
     public void setUp() {
@@ -95,7 +107,13 @@ class ChatServiceTest {
         Member receiver = Member.of(mileage, status, socialId, role);
         ChatRoom room = ChatRoom.builder().sender(sender).receiver(receiver).build();
         ChatMessageRequest messageDto = new ChatMessageRequest(1L, 2L, 3L, "Hello");
-        ChatMessage message = ChatMessage.builder().sender(sender).receiver(receiver).message(messageDto.message()).room(room).type(ChatType.TEXT).build();
+        ChatMessage message = ChatMessage.builder()
+                .sender(sender)
+                .receiver(receiver)
+                .message(messageDto.message())
+                .room(room)
+                .type(ChatType.TEXT)
+                .build();
 
         given(memberRepository.findById(1L)).willReturn(Optional.of(sender));
         given(memberRepository.findById(2L)).willReturn(Optional.of(receiver));
@@ -210,7 +228,8 @@ class ChatServiceTest {
         when(chatReadStatusRepository.findByMemberAndRoom(sender, room)).thenReturn(chatReadStatus);
 
         // when
-        BusinessException exception = assertThrows(BusinessException.class, ()-> chatService.getUnreadMessagesByRoom(sender, roomId));
+        BusinessException exception = assertThrows(BusinessException.class,
+                () -> chatService.getUnreadMessagesByRoom(sender, roomId));
 
         // then
         assertEquals(ChatErrorCode.READ_STATUS_NOT_FOUND, exception.getErrorCode());
@@ -248,4 +267,120 @@ class ChatServiceTest {
         assertEquals(unreadMessages, chatMessages);
         verify(chatReadStatusRepository, times(1)).save(chatReadStatus);
     }
+
+    @Test
+    @DisplayName("존재하지 않는 메시지를 읽으려고 하는 경우 예외가 발생한다.")
+    public void readMessage_MessageNotFound_ShouldThrowException() {
+        // given
+        int mileage = 1000;
+        Status status = Status.ACTIVE;
+        String socialId = "1111";
+        Role role = Role.USER;
+        Member sender = Member.of(mileage, status, socialId, role);
+        Long messageId = 100L;
+        ReadMessageRequest request = new ReadMessageRequest(messageId);
+
+        given(chatMessageRepository.findById(messageId)).willReturn(Optional.empty());
+
+        // when
+        BusinessException exception = assertThrows(BusinessException.class,
+                () -> chatService.readMessage(sender, request));
+
+        // then
+        assertEquals(ChatErrorCode.MESSAGE_NOT_FOUND, exception.getErrorCode());
+    }
+
+    @Test
+    @DisplayName("유효한 요청에 대해 파일을 업로드하는 경우.")
+    public void uploadChatFile_ValidRequest_ShouldUploadFile() {
+        // given
+        int mileage = 1000;
+        Status status = Status.ACTIVE;
+        String socialId = "1111";
+        Role role = Role.USER;
+        Member sender = Member.of(mileage, status, socialId, role);
+        Member receiver = Member.of(mileage, status, socialId, role);
+        ChatRoom room = ChatRoom.builder().sender(sender).receiver(receiver).build();
+        MultipartFile file = mock(MultipartFile.class);
+        String fileUrl = "https://s3.amazonaws.com/bucket/file.png";
+        ChatMessage message = ChatMessage.builder()
+                .sender(sender)
+                .receiver(receiver)
+                .room(room)
+                .message(fileUrl)
+                .type(ChatType.IMAGE)
+                .build();
+        ChatMessageRequest messageDto = new ChatMessageRequest(1L, 2L, 3L, "Hello");
+
+        given(memberRepository.findById(1L)).willReturn(Optional.of(sender));
+        given(memberRepository.findById(2L)).willReturn(Optional.of(receiver));
+        given(chatRoomRepository.findById(3L)).willReturn(Optional.of(room));
+        given(s3Service.upload(file)).willReturn(fileUrl);
+        given(chatMessageRepository.save(any(ChatMessage.class))).willReturn(message);
+
+        // when
+        ChatMessage result = chatService.uploadChatFile(messageDto, file);
+
+        // then
+        assertEquals(fileUrl, result.getMessage());
+        verify(chatMessageRepository, times(1)).save(any(ChatMessage.class));
+    }
+
+    @Test
+    @DisplayName("채팅방에서 나가는데 성공한다.")
+    public void testExitChatRoomSuccess() {
+        // given
+        int mileage = 1000;
+        Status status = Status.ACTIVE;
+        String socialId = "1111";
+        Role role = Role.USER;
+
+        Member sender = Member.of(mileage, status, socialId, role);
+        Member receiver = Member.of(mileage, status, socialId, role);
+        ChatRoom room = ChatRoom.builder().sender(sender).receiver(receiver).build();
+        Long roomId = 1L;
+
+        given(chatRoomRepository.findById(roomId)).willReturn(Optional.of(room));
+        given(chatRoomRepository.save(room)).willReturn(room);
+
+        // when (sender가 나갈 때)
+        ChatRoom result = chatService.exitChatRoom(roomId, sender);
+
+        // then
+        assertTrue(result.isLeaveSender());
+        verify(chatRoomRepository, times(1)).save(room);  // once when setting leave status, once in the return statement
+
+        // when (receiver가 나갈 때)
+        result = chatService.exitChatRoom(roomId, receiver);
+
+        // then
+        assertTrue(result.isLeaveReceiver());
+        verify(chatRoomRepository, times(2)).save(room);  // once when setting leave status, once in the return statement
+    }
+
+    @Test
+    @DisplayName("채팅방에 없는 유저가 나가려고 할 때 예외를 발생시킨다.")
+    public void testExitChatRoomInvalidMember() {
+        // given
+        int mileage = 1000;
+        Status status = Status.ACTIVE;
+        String socialId = "1111";
+        Role role = Role.USER;
+
+        Member sender = Member.of(mileage, status, socialId, role);
+        Member receiver = Member.of(mileage, status, socialId, role);
+        Member another = Member.of(mileage, status, socialId, role);
+        ChatRoom room = ChatRoom.builder().sender(sender).receiver(receiver).build();
+        Long roomId = 1L;
+
+        given(chatRoomRepository.findById(roomId)).willReturn(Optional.of(room));
+
+        // when
+        BusinessException exception = assertThrows(BusinessException.class, () -> chatService.exitChatRoom(roomId, another));
+
+        // then
+        assertEquals(ChatErrorCode.INVALID_MEMBER, exception.getErrorCode());
+        verify(chatRoomRepository, never()).save(any());
+    }
+
 }
