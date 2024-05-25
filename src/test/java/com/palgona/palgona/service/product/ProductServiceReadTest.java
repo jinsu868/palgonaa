@@ -1,8 +1,13 @@
 package com.palgona.palgona.service.product;
 
+import com.palgona.palgona.common.dto.CustomMemberDetails;
 import com.palgona.palgona.common.error.code.ProductErrorCode;
 import com.palgona.palgona.common.error.exception.BusinessException;
+import com.palgona.palgona.domain.member.Member;
+import com.palgona.palgona.domain.member.Role;
+import com.palgona.palgona.domain.member.Status;
 import com.palgona.palgona.domain.product.Category;
+import com.palgona.palgona.domain.product.Product;
 import com.palgona.palgona.domain.product.ProductState;
 import com.palgona.palgona.dto.ProductDetailResponse;
 import com.palgona.palgona.repository.ProductImageRepository;
@@ -36,6 +41,10 @@ public class ProductServiceReadTest {
     @Test
     void 상품_상세_조회_성공() {
         // given
+        // 멤버
+        Member member = createMember();
+        CustomMemberDetails memberDetails = new CustomMemberDetails(member);
+
         // 상품
         Long productId = 1L;
         String productName = "상품1";
@@ -50,14 +59,16 @@ public class ProductServiceReadTest {
         Integer highestPrice = 10000;
         Integer bookmarkCount = 3;
 
+        Product product = Product.builder()
+                .name(productName)
+                .content(content)
+                .category(Category.valueOf(category))
+                .productState(ProductState.valueOf(productState))
+                .deadline(deadline)
+                .build();
+
         ProductDetailQueryResponse response = new ProductDetailQueryResponse(
-                productId,
-                productName,
-                content,
-                category,
-                productState,
-                deadline,
-                create_at,
+                product,
                 ownerId,
                 ownerName,
                 ownerImgUrl,
@@ -70,7 +81,7 @@ public class ProductServiceReadTest {
         // when
         when(productRepository.findProductWithAll(productId)).thenReturn(Optional.of(response));
         when(productImageRepository.findProductImageUrlsByProduct(productId)).thenReturn(imageUrls);
-        ProductDetailResponse result = productService.readProduct(productId);
+        ProductDetailResponse result = productService.readProduct(productId, memberDetails);
 
         // then
         assertThat(result.productId()).isEqualTo(productId);
@@ -91,18 +102,27 @@ public class ProductServiceReadTest {
     @Test
     void 실패_유효하지_않은_상품id() {
         // given
+        // 멤버
+        Member member = createMember();
+        CustomMemberDetails memberDetails = new CustomMemberDetails(member);
+
         Long productId = 2L;
 
         // when
         when(productRepository.findProductWithAll(productId)).thenReturn(Optional.empty());
 
         // then
-        assertThrows(IllegalArgumentException.class, () -> productService.readProduct(productId));
+        assertThrows(IllegalArgumentException.class, () -> productService.readProduct(productId, memberDetails));
     }
 
     @Test
     void 실패_삭제된_상품(){
         //given
+        // 멤버
+        Member member = createMember();
+        CustomMemberDetails memberDetails = new CustomMemberDetails(member);
+
+        //상품
         Long productId = 1L;
         String productName = "상품1";
         String content = "이것은 상품 설명 부분";
@@ -116,14 +136,16 @@ public class ProductServiceReadTest {
         Integer highestPrice = 10000;
         Integer bookmarkCount = 3;
 
+        Product product = Product.builder()
+                .name(productName)
+                .content(content)
+                .category(Category.valueOf(category))
+                .productState(ProductState.valueOf(productState))
+                .deadline(deadline)
+                .build();
+
         ProductDetailQueryResponse response = new ProductDetailQueryResponse(
-                productId,
-                productName,
-                content,
-                category,
-                productState,
-                deadline,
-                create_at,
+                product,
                 ownerId,
                 ownerName,
                 ownerImgUrl,
@@ -134,10 +156,20 @@ public class ProductServiceReadTest {
         // when
         when(productRepository.findProductWithAll(productId)).thenReturn(Optional.of(response));
         BusinessException exception = assertThrows(BusinessException.class,
-                () -> productService.readProduct(productId));
+                () -> productService.readProduct(productId, memberDetails));
 
         // then
         assertThat(exception.getErrorCode()).isEqualTo(ProductErrorCode.DELETED_PRODUCT);
+    }
+
+    private Member createMember(){
+        int mileage = 1000;
+        Status status = Status.ACTIVE;
+        String socialId = "1111";
+        Role role = Role.USER;
+        Member member = Member.of(mileage, status, socialId, role);
+
+        return member;
     }
 
 }

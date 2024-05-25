@@ -27,13 +27,13 @@ public record ProductDetailResponse(
             List<String> files
     ){
         return new ProductDetailResponse(
-                queryResponse.productId(),
-                queryResponse.productName(),
-                queryResponse.content(),
-                queryResponse.category(),
-                queryResponse.productState(),
-                queryResponse.deadline(),
-                queryResponse.created_at(),
+                queryResponse.product().getId(),
+                queryResponse.product().getName(),
+                queryResponse.product().getContent(),
+                queryResponse.product().getCategory().getValue(),
+                queryResponse.product().getProductState().getValue(),
+                queryResponse.product().getDeadline(),
+                queryResponse.product().getCreatedAt(),
                 queryResponse.ownerId(),
                 queryResponse.ownerName(),
                 queryResponse.ownerImgUrl(),

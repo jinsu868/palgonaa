@@ -3,6 +3,7 @@ package com.palgona.palgona.repository.product;
 import static com.palgona.palgona.domain.bidding.QBidding.bidding;
 import static com.palgona.palgona.domain.bookmark.QBookmark.bookmark;
 import static com.palgona.palgona.domain.image.QImage.image;
+import static com.palgona.palgona.domain.member.QMember.member;
 import static com.palgona.palgona.domain.product.QProduct.product;
 import static com.palgona.palgona.domain.product.QProductImage.productImage;
 
@@ -11,19 +12,24 @@ import com.palgona.palgona.domain.product.Category;
 import com.palgona.palgona.domain.product.SortType;
 import com.palgona.palgona.dto.response.ProductPageResponse;
 import com.palgona.palgona.repository.product.querydto.ImageQueryResponse;
+import com.palgona.palgona.repository.product.querydto.ProductDetailQueryResponse;
 import com.palgona.palgona.repository.product.querydto.ProductQueryResponse;
 import com.querydsl.core.types.Order;
 import com.querydsl.core.types.OrderSpecifier;
 import com.querydsl.core.types.Projections;
 import com.querydsl.core.types.dsl.BooleanExpression;
+import com.querydsl.core.types.dsl.CaseBuilder;
 import com.querydsl.core.types.dsl.StringExpressions;
+import com.querydsl.jpa.JPAExpressions;
 import com.querydsl.jpa.impl.JPAQueryFactory;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.jpa.repository.Query;
 
 @RequiredArgsConstructor
 public class ProductRepositoryImpl implements ProductRepositoryCustom {
@@ -33,6 +39,31 @@ public class ProductRepositoryImpl implements ProductRepositoryCustom {
     private static final int MAX_BOOKMARK_DIGIT = 6;
 
     private final JPAQueryFactory queryFactory;
+
+    @Override
+    public Optional<ProductDetailQueryResponse> findProductWithAll(long productId){
+        ProductDetailQueryResponse result = queryFactory
+                .select(Projections.constructor(ProductDetailQueryResponse.class,
+                        product,
+                        member.id,
+                        member.nickName,
+                        member.profileImage,
+                        new CaseBuilder()
+                                .when(bidding.price.max().isNotNull())
+                                .then(bidding.price.max())
+                                .otherwise(product.initialPrice),
+                        JPAExpressions
+                                .select(bookmark.count())
+                                .from(bookmark)
+                                .where(bookmark.product.eq(product))
+                ))
+                .from(product)
+                .join(product.member, member)
+                .where(product.id.eq(productId))
+                .fetchOne();
+
+        return Optional.ofNullable(result);
+    }
 
     @Override
     public SliceResponse<ProductPageResponse> findAllByCategoryAndSearchWord(
