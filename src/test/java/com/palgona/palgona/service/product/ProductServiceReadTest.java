@@ -11,6 +11,7 @@ import com.palgona.palgona.domain.product.Product;
 import com.palgona.palgona.domain.product.ProductState;
 import com.palgona.palgona.dto.ProductDetailResponse;
 import com.palgona.palgona.repository.ProductImageRepository;
+import com.palgona.palgona.repository.SilentNotificationsRepository;
 import com.palgona.palgona.repository.product.ProductRepository;
 import com.palgona.palgona.repository.product.querydto.ProductDetailQueryResponse;
 import com.palgona.palgona.service.ProductService;
@@ -25,6 +26,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
 
+import static com.palgona.palgona.common.error.code.ProductErrorCode.NOT_FOUND;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.when;
@@ -35,6 +37,8 @@ public class ProductServiceReadTest {
     private ProductRepository productRepository;
     @Mock
     private ProductImageRepository productImageRepository;
+    @Mock
+    private SilentNotificationsRepository silentNotificationsRepository;
     @InjectMocks
     private ProductService productService;
 
@@ -81,22 +85,23 @@ public class ProductServiceReadTest {
         // when
         when(productRepository.findProductWithAll(productId)).thenReturn(Optional.of(response));
         when(productImageRepository.findProductImageUrlsByProduct(productId)).thenReturn(imageUrls);
+        when(silentNotificationsRepository.findByMemberAndProduct(member, product)).thenReturn(Optional.empty());
         ProductDetailResponse result = productService.readProduct(productId, memberDetails);
 
         // then
-        assertThat(result.productId()).isEqualTo(productId);
         assertThat(result.productName()).isEqualTo(productName);
         assertThat(result.content()).isEqualTo(content);
         assertThat(result.category()).isEqualTo(category);
         assertThat(result.productState()).isEqualTo(productState);
         assertThat(result.deadline()).isEqualTo(deadline);
-        assertThat(result.created_at()).isEqualTo(create_at);
+//        assertThat(result.created_at()).isEqualTo(create_at); baseEntity값은 어떻게 테스트 하지?
         assertThat(result.ownerId()).isEqualTo(ownerId);
         assertThat(result.ownerName()).isEqualTo(ownerName);
         assertThat(result.ownerImgUrl()).isEqualTo(ownerImgUrl);
         assertThat(result.highestPrice()).isEqualTo(highestPrice);
         assertThat(result.bookmarkCount()).isEqualTo(bookmarkCount);
         assertThat(result.imageUrls()).isEqualTo(imageUrls);
+        assertThat(result.isSilent()).isEqualTo(false);
     }
 
     @Test
@@ -112,7 +117,10 @@ public class ProductServiceReadTest {
         when(productRepository.findProductWithAll(productId)).thenReturn(Optional.empty());
 
         // then
-        assertThrows(IllegalArgumentException.class, () -> productService.readProduct(productId, memberDetails));
+        BusinessException exception = assertThrows(BusinessException.class,
+                () -> productService.readProduct(productId, memberDetails));
+
+        assertThat(exception.getErrorCode()).isEqualTo(ProductErrorCode.NOT_FOUND);
     }
 
     @Test

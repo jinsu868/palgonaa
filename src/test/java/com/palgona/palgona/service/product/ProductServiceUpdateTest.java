@@ -198,7 +198,10 @@ public class ProductServiceUpdateTest {
         when(productRepository.findById(productId)).thenReturn(Optional.empty());
 
         // then
-        assertThrows(IllegalArgumentException.class, () -> productService.updateProduct(productId, request, images, memberDetails));
+        BusinessException exception = assertThrows(BusinessException.class,
+                () -> productService.updateProduct(productId, request, images, memberDetails));
+
+        assertThat(exception.getErrorCode()).isEqualTo(ProductErrorCode.NOT_FOUND);
     }
 
     @Test

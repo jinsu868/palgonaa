@@ -107,7 +107,7 @@ public class ProductService {
         }
 
         //3. 상품 이미지 가져오기
-        List<String> imageUrls = productImageRepository.findProductImageUrlsByProduct(product.getId());
+        List<String> imageUrls = productImageRepository.findProductImageUrlsByProduct(productId);
 
         //4. 해당 상품에 대한 사용자 알림 상태 확인
         boolean isSilent = silentNotificationsRepository.findByMemberAndProduct(member, product)
