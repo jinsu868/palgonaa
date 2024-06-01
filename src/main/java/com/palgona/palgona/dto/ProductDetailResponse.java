@@ -20,26 +20,29 @@ public record ProductDetailResponse(
         String ownerImgUrl,
         Integer highestPrice,
         Integer bookmarkCount,
-        List<String> imageUrls
+        List<String> imageUrls,
+        boolean isSilent
 ) {
     public static ProductDetailResponse from(
             ProductDetailQueryResponse queryResponse,
-            List<String> files
-    ){
+            List<String> files,
+            boolean isSilent
+            ){
         return new ProductDetailResponse(
-                queryResponse.productId(),
-                queryResponse.productName(),
-                queryResponse.content(),
-                queryResponse.category(),
-                queryResponse.productState(),
-                queryResponse.deadline(),
-                queryResponse.created_at(),
+                queryResponse.product().getId(),
+                queryResponse.product().getName(),
+                queryResponse.product().getContent(),
+                queryResponse.product().getCategory().getKey(),
+                queryResponse.product().getProductState().getKey(),
+                queryResponse.product().getDeadline(),
+                queryResponse.product().getCreatedAt(),
                 queryResponse.ownerId(),
                 queryResponse.ownerName(),
                 queryResponse.ownerImgUrl(),
                 queryResponse.highestBid(),
                 queryResponse.bookmarkCount(),
-                files
+                files,
+                isSilent
         );
     }
 

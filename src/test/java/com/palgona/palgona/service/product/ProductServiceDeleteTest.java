@@ -105,7 +105,10 @@ public class ProductServiceDeleteTest {
         when(productRepository.findById(productId)).thenReturn(Optional.empty());
 
         // then
-        assertThrows(IllegalArgumentException.class, () -> productService.deleteProduct(productId, memberDetails));
+        BusinessException exception = assertThrows(BusinessException.class,
+                () -> productService.deleteProduct(productId, memberDetails));
+
+        assertThat(exception.getErrorCode()).isEqualTo(ProductErrorCode.NOT_FOUND);
     }
 
     @Test

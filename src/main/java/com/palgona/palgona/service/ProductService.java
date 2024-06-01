@@ -3,6 +3,7 @@ package com.palgona.palgona.service;
 import com.palgona.palgona.common.dto.CustomMemberDetails;
 import com.palgona.palgona.common.dto.response.SliceResponse;
 import com.palgona.palgona.common.error.exception.BusinessException;
+import com.palgona.palgona.domain.SilentNotifications;
 import com.palgona.palgona.domain.bookmark.Bookmark;
 import com.palgona.palgona.domain.image.Image;
 import com.palgona.palgona.domain.member.Member;
@@ -23,15 +24,18 @@ import com.palgona.palgona.repository.product.ProductRepository;
 import com.palgona.palgona.repository.product.querydto.ProductDetailQueryResponse;
 import com.palgona.palgona.service.image.S3Service;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.stream.Collectors;
 
+import static com.palgona.palgona.common.error.code.BookmarkErrorCode.BOOKMARK_EXISTS;
 import static com.palgona.palgona.common.error.code.ProductErrorCode.*;
+import static com.palgona.palgona.common.error.code.SlientNotificationsErrorCode.NOTIFICATION_ALREADY_SILENCED;
+import static com.palgona.palgona.common.error.code.SlientNotificationsErrorCode.NOTIFICATION_NOT_FOUND;
 
 @RequiredArgsConstructor
 @Service
@@ -44,6 +48,7 @@ public class ProductService {
     private final ProductImageRepository productImageRepository;
     private final BiddingRepository biddingRepository;
     private final S3Service s3Service;
+    private final SilentNotificationsRepository silentNotificationsRepository;
 
     @Transactional
     public void createProduct(ProductCreateRequest request, List<MultipartFile> imageFiles, CustomMemberDetails memberDetails) {
@@ -86,21 +91,29 @@ public class ProductService {
         }
     }
 
-    public ProductDetailResponse readProduct(Long productId){
+    public ProductDetailResponse readProduct(Long productId, CustomMemberDetails memberDetail){
+        Member member = memberDetail.getMember();
+
         //1. 상품 정보 가져오기(상품, 멤버, 최고 입찰가, 북마크 개수)
         //Todo: 1-2. 채팅 개수 정보 가져오기
         ProductDetailQueryResponse queryResponse = productRepository.findProductWithAll(productId)
-                .orElseThrow(() -> new IllegalArgumentException());
+                .orElseThrow(() -> new BusinessException(NOT_FOUND));
+
+        Product product = queryResponse.product();
 
         //2. 상품이 삭제되었는지 확인
-        if(ProductState.valueOf(queryResponse.productState()) == ProductState.DELETED){
+        if(product.getProductState() == ProductState.DELETED){
             throw new BusinessException(DELETED_PRODUCT);
         }
 
         //3. 상품 이미지 가져오기
-        List<String> imageUrls = productImageRepository.findProductImageUrlsByProduct(queryResponse.productId());
+        List<String> imageUrls = productImageRepository.findProductImageUrlsByProduct(productId);
 
-        return ProductDetailResponse.from(queryResponse, imageUrls);
+        //4. 해당 상품에 대한 사용자 알림 상태 확인
+        boolean isSilent = silentNotificationsRepository.findByMemberAndProduct(member, product)
+                .isPresent();
+
+        return ProductDetailResponse.from(queryResponse, imageUrls, isSilent);
     }
 
     @Transactional(readOnly = true)
@@ -119,7 +132,7 @@ public class ProductService {
         Member member = memberDetails.getMember();
 
         Product product = productRepository.findById(productId)
-                .orElseThrow(() -> new IllegalArgumentException());
+                .orElseThrow(() -> new BusinessException(NOT_FOUND));
 
 
         //1. 상품에 대한 권한 확인
@@ -157,7 +170,7 @@ public class ProductService {
         Member member = memberDetails.getMember();
 
         Product product = productRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException());
+                .orElseThrow(() -> new BusinessException(NOT_FOUND));
 
         //0. 상품 유효성 확인
         checkProduct(request.initialPrice(), request.category(), request.deadline());
@@ -211,6 +224,43 @@ public class ProductService {
         product.updateContent(request.content());
         product.updateCategory(Category.valueOf(request.category()));
         product.updateDeadline(request.deadline());
+    }
+
+    public void turnOffProductNotification(Long productId, CustomMemberDetails memberDetails){
+        Member member = memberDetails.getMember();
+
+        //1. 해당 상품이 존재하는지 확인
+        Product product = productRepository.findById(productId)
+                .orElseThrow(() -> new BusinessException(NOT_FOUND));
+
+        //2. 해당 상품에 알림 무시가 이미 설정되어있는지 확인
+        silentNotificationsRepository.findByMemberAndProduct(member, product)
+                .ifPresent(b -> {
+                    throw new BusinessException(NOTIFICATION_ALREADY_SILENCED);
+                });
+
+        //3. 알림 무시 추가
+        SilentNotifications silentNotifications = SilentNotifications.builder()
+                .member(member)
+                .product(product)
+                .build();
+
+        silentNotificationsRepository.save(silentNotifications);
+    }
+
+    public void turnOnProductNotification(Long productId, CustomMemberDetails memberDetails){
+        Member member = memberDetails.getMember();
+
+        //1. 해당 상품이 존재하는지 확인
+        Product product = productRepository.findById(productId)
+                .orElseThrow(() -> new BusinessException(NOT_FOUND));
+
+        //2. 해당 상품에 알림 무시가 설정되어있는지 확인
+        SilentNotifications silentNotifications = silentNotificationsRepository.findByMemberAndProduct(member, product)
+                .orElseThrow(() -> new BusinessException(NOTIFICATION_NOT_FOUND));
+
+        //3. 알림 무시 삭제
+        silentNotificationsRepository.delete(silentNotifications);
     }
 
     private void checkRelatedBidding(Product product){

@@ -43,8 +43,8 @@ public class ProductController {
 
     @GetMapping("/{productId}")
     @Operation(summary = "상품 상세 조회 api", description = "상품 id를 받아 상품 상세 정보를 보여준다.")
-    public ResponseEntity<ProductDetailResponse> readProduct(@PathVariable Long productId){
-        ProductDetailResponse productDetailResponse = productService.readProduct(productId);
+    public ResponseEntity<ProductDetailResponse> readProduct(@PathVariable Long productId, @AuthenticationPrincipal CustomMemberDetails member){
+        ProductDetailResponse productDetailResponse = productService.readProduct(productId, member);
 
         return ResponseEntity.ok()
                 .body(productDetailResponse);
@@ -90,5 +90,22 @@ public class ProductController {
         return ResponseEntity.ok().build();
     }
 
+    @PostMapping("/{productId}/Notifications")
+    @Operation(summary = "상품 알림 무시 api", description = "상품 id를 받아 해당 상품에 대한 알림 무시를 활성화한다.")
+    public ResponseEntity<Void> turnOffProductNotification(@PathVariable Long productId, @AuthenticationPrincipal CustomMemberDetails member){
+
+        productService.turnOffProductNotification(productId, member);
+
+        return ResponseEntity.ok().build();
+    }
+
+    @DeleteMapping("/{productId}/Notifications")
+    @Operation(summary = "상품 알림 활성화 api", description = "상품 id를 받아 해당 상품에 대한 알림을 다시 활성화한다.")
+    public ResponseEntity<Void> turnOnProductNotification(@PathVariable Long productId, @AuthenticationPrincipal CustomMemberDetails member){
+
+        productService.turnOnProductNotification(productId, member);
+
+        return ResponseEntity.ok().build();
+    }
 
 }
