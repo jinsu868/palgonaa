@@ -44,7 +44,13 @@ public class ProductRepositoryImpl implements ProductRepositoryCustom {
     public Optional<ProductDetailQueryResponse> findProductWithAll(long productId){
         ProductDetailQueryResponse result = queryFactory
                 .select(Projections.constructor(ProductDetailQueryResponse.class,
-                        product,
+                        product.id,
+                        product.name,
+                        product.content,
+                        product.category,
+                        product.productState,
+                        product.deadline,
+                        product.createdAt,
                         member.id,
                         member.nickName,
                         member.profileImage,
