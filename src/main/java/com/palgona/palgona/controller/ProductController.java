@@ -30,12 +30,11 @@ public class ProductController {
     @PostMapping(consumes = {MediaType.APPLICATION_JSON_VALUE, MediaType.MULTIPART_FORM_DATA_VALUE})
     @Operation(summary = "상품 등록 api", description = "상품 정보와 상품 사진들을 받아서 상품 등록을 진행한다.")
     public ResponseEntity<Void> createProduct(
-            @RequestPart(value = "productReq") ProductCreateRequest request,
-            @RequestPart(value = "files") List<MultipartFile> files,
+            @RequestBody ProductCreateRequest request,
             @AuthenticationPrincipal CustomMemberDetails member
     ){
 
-        productService.createProduct(request, files, member);
+        productService.createProduct(request, request.files(), member);
 
         return ResponseEntity.ok()
                 .build();

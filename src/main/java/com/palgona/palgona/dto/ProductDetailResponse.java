@@ -19,7 +19,7 @@ public record ProductDetailResponse(
         String ownerName,
         String ownerImgUrl,
         Integer highestPrice,
-        Integer bookmarkCount,
+        Long bookmarkCount,
         List<String> imageUrls,
         boolean isSilent
 ) {
@@ -29,13 +29,13 @@ public record ProductDetailResponse(
             boolean isSilent
             ){
         return new ProductDetailResponse(
-                queryResponse.product().getId(),
-                queryResponse.product().getName(),
-                queryResponse.product().getContent(),
-                queryResponse.product().getCategory().getKey(),
-                queryResponse.product().getProductState().getKey(),
-                queryResponse.product().getDeadline(),
-                queryResponse.product().getCreatedAt(),
+                queryResponse.productId(),
+                queryResponse.productName(),
+                queryResponse.content(),
+                queryResponse.category().getKey(),
+                queryResponse.productState().getKey(),
+                queryResponse.deadline(),
+                queryResponse.created_at(),
                 queryResponse.ownerId(),
                 queryResponse.ownerName(),
                 queryResponse.ownerImgUrl(),
