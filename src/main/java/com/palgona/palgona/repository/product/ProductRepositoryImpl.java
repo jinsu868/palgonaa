@@ -77,7 +77,7 @@ public class ProductRepositoryImpl implements ProductRepositoryCustom {
                 ProductQueryResponse.class,
                         product.id,
                         product.name,
-                        bidding.price.max().coalesce(0),
+                        bidding.price.max().coalesce(product.initialPrice),
                         bookmark.countDistinct().intValue().coalesce(0),
                         product.deadline,
                         product.createdAt
