@@ -76,7 +76,7 @@ class ChatServiceTest {
         String socialId = "1111";
         Role role = Role.USER;
 
-        ChatMessageRequest messageDto = new ChatMessageRequest(1L, 2L, 3L, "Hello");
+        ChatMessageRequest messageDto = new ChatMessageRequest(1L, 2L, 3L, "Hello", null);
         Member sender = Member.of(mileage, status, socialId, role);
         Member receiver = Member.of(mileage, status, socialId, role);
         Member another = Member.of(mileage, status, socialId, role);
@@ -106,7 +106,7 @@ class ChatServiceTest {
         Member sender = Member.of(mileage, status, socialId, role);
         Member receiver = Member.of(mileage, status, socialId, role);
         ChatRoom room = ChatRoom.builder().sender(sender).receiver(receiver).build();
-        ChatMessageRequest messageDto = new ChatMessageRequest(1L, 2L, 3L, "Hello");
+        ChatMessageRequest messageDto = new ChatMessageRequest(1L, 2L, 3L, "Hello", null);
         ChatMessage message = ChatMessage.builder()
                 .sender(sender)
                 .receiver(receiver)
@@ -310,7 +310,7 @@ class ChatServiceTest {
                 .message(fileUrl)
                 .type(ChatType.IMAGE)
                 .build();
-        ChatMessageRequest messageDto = new ChatMessageRequest(1L, 2L, 3L, "Hello");
+        ChatMessageRequest messageDto = new ChatMessageRequest(1L, 2L, 3L, "Hello", null);
 
         given(memberRepository.findById(1L)).willReturn(Optional.of(sender));
         given(memberRepository.findById(2L)).willReturn(Optional.of(receiver));
