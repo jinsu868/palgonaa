@@ -284,6 +284,7 @@ public class ProductServiceUpdateTest {
         String category = Category.BOOK.getKey();
         LocalDateTime deadline = LocalDateTime.now().plusDays(6);
         List<String> deletedImageUrls = Arrays.asList("image1", "image2");
+        List<MultipartFile> update_images = new ArrayList<>();
 
         ProductUpdateRequest request = new ProductUpdateRequest(
                 name,
@@ -291,9 +292,9 @@ public class ProductServiceUpdateTest {
                 content,
                 category,
                 deadline,
-                deletedImageUrls
+                deletedImageUrls,
+                update_images
         );
-        List<MultipartFile> update_images = new ArrayList<>();
 
         //when
         when(productRepository.findById(productId)).thenReturn(Optional.of(product));
@@ -322,6 +323,7 @@ public class ProductServiceUpdateTest {
         String category = "유효하지 않은 카테고리";
         LocalDateTime deadline = LocalDateTime.now().plusDays(6);
         List<String> deletedImageUrls = Arrays.asList("image1", "image2");
+        List<MultipartFile> update_images = new ArrayList<>();
 
         ProductUpdateRequest request = new ProductUpdateRequest(
                 name,
@@ -329,10 +331,9 @@ public class ProductServiceUpdateTest {
                 content,
                 category,
                 deadline,
-                deletedImageUrls
+                deletedImageUrls,
+                update_images
         );
-        List<MultipartFile> update_images = new ArrayList<>();
-
         //when
         when(productRepository.findById(productId)).thenReturn(Optional.of(product));
         BusinessException exception = assertThrows(BusinessException.class,
@@ -360,6 +361,7 @@ public class ProductServiceUpdateTest {
         String category = Category.BOOK.getKey();
         LocalDateTime deadline = LocalDateTime.now();
         List<String> deletedImageUrls = Arrays.asList("image1", "image2");
+        List<MultipartFile> update_images = new ArrayList<>();
 
         ProductUpdateRequest request = new ProductUpdateRequest(
                 name,
@@ -367,9 +369,9 @@ public class ProductServiceUpdateTest {
                 content,
                 category,
                 deadline,
-                deletedImageUrls
+                deletedImageUrls,
+                update_images
         );
-        List<MultipartFile> update_images = new ArrayList<>();
 
         //when
         when(productRepository.findById(productId)).thenReturn(Optional.of(product));
@@ -419,6 +421,7 @@ public class ProductServiceUpdateTest {
         String category = Category.BOOK.getKey();
         LocalDateTime deadline = LocalDateTime.now().plusDays(6);
         List<String> deletedImageUrls = Arrays.asList("image1", "image2");
+        List<MultipartFile> update_images = new ArrayList<>();
 
         ProductUpdateRequest request = new ProductUpdateRequest(
                 name,
@@ -426,7 +429,8 @@ public class ProductServiceUpdateTest {
                 content,
                 category,
                 deadline,
-                deletedImageUrls
+                deletedImageUrls,
+                update_images
         );
 
         return request;
