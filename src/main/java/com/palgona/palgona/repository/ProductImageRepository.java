@@ -4,6 +4,7 @@ import com.palgona.palgona.domain.image.Image;
 import com.palgona.palgona.domain.product.Product;
 import com.palgona.palgona.domain.product.ProductImage;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 
 import java.util.List;
@@ -18,6 +19,7 @@ public interface ProductImageRepository extends JpaRepository<ProductImage, Long
     """)
     List<String> findProductImageUrlsByProduct(Long productId);
 
+    @Modifying
     @Query("""
         delete from ProductImage pi
         where pi.image in :images

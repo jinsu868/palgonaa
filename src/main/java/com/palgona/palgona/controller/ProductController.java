@@ -75,16 +75,15 @@ public class ProductController {
 
     @PutMapping(
             value = "/{productId}",
-            consumes = {MediaType.APPLICATION_JSON_VALUE, MediaType.MULTIPART_FORM_DATA_VALUE})
+            consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @Operation(summary = "상품 수정 api", description = "상품 id를 받아 해당 상품 수정 처리를 진행한다.")
     public ResponseEntity<Void> updateProduct(
             @PathVariable Long productId,
-            @RequestPart(value = "productReq") ProductUpdateRequest request,
-            @RequestPart(value = "files") List<MultipartFile> files,
+            @ModelAttribute ProductUpdateRequest request,
             @AuthenticationPrincipal CustomMemberDetails member
     ){
 
-        productService.updateProduct(productId, request, files, member);
+        productService.updateProduct(productId, request, request.files(), member);
 
         return ResponseEntity.ok().build();
     }
