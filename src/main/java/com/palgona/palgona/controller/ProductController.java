@@ -27,10 +27,10 @@ public class ProductController {
 
     private final ProductService productService;
 
-    @PostMapping(consumes = {MediaType.APPLICATION_JSON_VALUE, MediaType.MULTIPART_FORM_DATA_VALUE})
+    @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @Operation(summary = "상품 등록 api", description = "상품 정보와 상품 사진들을 받아서 상품 등록을 진행한다.")
     public ResponseEntity<Void> createProduct(
-            @RequestBody ProductCreateRequest request,
+            @ModelAttribute ProductCreateRequest request,
             @AuthenticationPrincipal CustomMemberDetails member
     ){
 
