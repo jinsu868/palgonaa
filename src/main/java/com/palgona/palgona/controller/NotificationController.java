@@ -23,7 +23,7 @@ public class NotificationController {
     @GetMapping
     @Operation(summary = "알림 리스트 조회 api", description = "멤버의 알림 리스트를 조회한다.")
     public ResponseEntity<SliceResponse<NotificationResponse>> getNotifications(@AuthenticationPrincipal CustomMemberDetails memberDetails,
-                                                                       @RequestParam(required = false) String cursor,
+                                                                       @RequestParam(required = false, defaultValue = "0") int cursor,
                                                                        @RequestParam(defaultValue = "20") int size) {
 
         SliceResponse<NotificationResponse> response = notificationService.readNotifications(memberDetails, cursor, size);

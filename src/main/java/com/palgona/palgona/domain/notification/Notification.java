@@ -52,7 +52,7 @@ public class Notification extends BaseTimeEntity {
                 .build();
     }
 
-    public boolean isOwner(Member member){
-        return this.member.equals(member);
+    public boolean isOwner(Member member) {
+        return this.member.getId().equals(member.getId());
     }
 }
