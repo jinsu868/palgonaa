@@ -7,19 +7,25 @@ import com.palgona.palgona.domain.mileage.MileageState;
 import com.palgona.palgona.domain.member.Member;
 import com.palgona.palgona.dto.MileageChargeRequest;
 import com.palgona.palgona.repository.MileageHistoryRepository;
+import com.palgona.palgona.repository.member.MemberRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.util.List;
 
 import static com.palgona.palgona.common.error.code.MileageErrorCode.INVALID_CHARGE_AMOUNT;
 import static com.palgona.palgona.common.error.code.MileageErrorCode.INVALID_MILEAGE_TRANSACTION;
 
 @Service
 @RequiredArgsConstructor
+@Transactional
 public class MileageHistoryService {
     private final MileageHistoryRepository mileageHistoryRepository;
+    private final MemberRepository memberRepository;
 
-    @Transactional
+
     public void chargeMileage(MileageChargeRequest request, CustomMemberDetails memberDetails){
         Member member = memberDetails.getMember();
 
@@ -34,6 +40,7 @@ public class MileageHistoryService {
 
         //2. 멤버 마일리지 변경
         member.updateMileage(after);
+        memberRepository.save(member); //스프링 시큐리티로 가져온 멤버는 영속 상태가 아니다...
 
         //3. 마일리지 변경이력 생성
         MileageHistory mileageHistory = MileageHistory.builder()
@@ -51,17 +58,22 @@ public class MileageHistoryService {
         Member member = memberDetails.getMember();
 
         //1. 해당 멤버의 최신 마일리지 기록을 확인
-        MileageHistory mileageHistory = mileageHistoryRepository.findTopByMember(member).orElse(null);
+        PageRequest limit = PageRequest.of(0, 1);
+        List<MileageHistory> mileageHistory = mileageHistoryRepository.findTopByMember(member, limit);
 
-        //2. 예외처리) 마일리지 거래 내역이 없는데, 마일리지 값이 0이 아닌 경우
-        if (mileageHistory == null && member.getMileage() != 0) {
-            member.updateMileage(0);
-            throw new BusinessException(INVALID_MILEAGE_TRANSACTION);
+        //2. 예외처리) 마일리지 거래 내역이 없는 경우
+        if (mileageHistory.isEmpty()) {
+            // 마일리지 값이 0이 아닌 경우
+            if(member.getMileage() != 0) {
+                member.updateMileage(0);
+                memberRepository.save(member);
+                throw new BusinessException(INVALID_MILEAGE_TRANSACTION);
+            }
         }
-
         //3. 예외처리) 마일리지 최근 내역과 일치하지 않는 경우
-        if(!mileageHistory.getAfterMileage().equals(member.getMileage())){
-            member.updateMileage(mileageHistory.getAfterMileage());
+        else if(!mileageHistory.get(0).getAfterMileage().equals(member.getMileage())){
+            member.updateMileage(mileageHistory.get(0).getAfterMileage());
+            memberRepository.save(member);
             throw new BusinessException(INVALID_MILEAGE_TRANSACTION);
         }
 
