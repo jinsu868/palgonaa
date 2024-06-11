@@ -49,7 +49,7 @@ public class SecurityConfig {
                 })
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/ws").permitAll()
-                        .requestMatchers("/api/v1/auth/login", "/api/v1/tests").permitAll()
+                        .requestMatchers("/api/v1/auth/login", "/api/v1/tests/**").permitAll()
                         .requestMatchers("/api/v1/auth/signup").hasRole(GUEST)
                         .requestMatchers("api/v1/auth/logout", "api/v1/auth/refresh-token").hasRole(USER)
                         .requestMatchers("/v3/**", "swagger-ui/**").permitAll()
