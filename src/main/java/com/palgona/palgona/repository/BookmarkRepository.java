@@ -4,6 +4,7 @@ import com.palgona.palgona.domain.bookmark.Bookmark;
 import com.palgona.palgona.domain.member.Member;
 import com.palgona.palgona.domain.product.Product;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 
 import java.util.List;
@@ -13,6 +14,7 @@ public interface BookmarkRepository extends JpaRepository<Bookmark, Long> {
 
     Optional<Bookmark> findByMemberAndProduct(Member member, Product product);
 
+    @Modifying
     @Query("""
         delete from Bookmark b
         where b.product = :product

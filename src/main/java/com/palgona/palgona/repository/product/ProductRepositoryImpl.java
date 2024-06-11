@@ -65,6 +65,7 @@ public class ProductRepositoryImpl implements ProductRepositoryCustom {
                 ))
                 .from(product)
                 .join(product.member, member)
+                .leftJoin(bidding).on(bidding.product.id.eq(product.id))
                 .where(product.id.eq(productId))
                 .fetchOne();
 
