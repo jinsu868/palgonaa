@@ -12,6 +12,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import static com.palgona.palgona.common.error.code.BookmarkErrorCode.BOOKMARK_EXISTS;
+import static com.palgona.palgona.common.error.code.BookmarkErrorCode.BOOKMARK_NOT_EXISTS;
+import static com.palgona.palgona.common.error.code.ProductErrorCode.NOT_FOUND;
 
 @Service
 @RequiredArgsConstructor
@@ -24,7 +26,7 @@ public class BookmarkService {
 
         //1. 해당 상품이 존재하는지 확인
         Product product = productRepository.findById(productId)
-                .orElseThrow(() -> new IllegalArgumentException());
+                .orElseThrow(() -> new BusinessException(NOT_FOUND));
 
         //2. 이미 추가된 찜인지 확인
         bookmarkRepository.findByMemberAndProduct(member, product)
@@ -46,11 +48,11 @@ public class BookmarkService {
 
         //1. 해당 상품이 존재하는지 확인
         Product product = productRepository.findById(productId)
-                .orElseThrow(() -> new IllegalArgumentException());
+                .orElseThrow(() -> new BusinessException(NOT_FOUND));
 
         //2. 해당 찜이 존재하는지 확인
         Bookmark bookmark = bookmarkRepository.findByMemberAndProduct(member, product)
-                .orElseThrow(() -> new IllegalArgumentException());
+                .orElseThrow(() -> new BusinessException(BOOKMARK_NOT_EXISTS));
 
         //3. 찜 삭제
         bookmarkRepository.delete(bookmark);
