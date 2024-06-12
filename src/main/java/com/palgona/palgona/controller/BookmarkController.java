@@ -1,12 +1,17 @@
 package com.palgona.palgona.controller;
 
 import com.palgona.palgona.common.dto.CustomMemberDetails;
+import com.palgona.palgona.common.dto.response.SliceResponse;
+import com.palgona.palgona.dto.BookmarkProductsResponse;
+import com.palgona.palgona.dto.response.ProductPageResponse;
 import com.palgona.palgona.service.BookmarkService;
 import io.swagger.v3.oas.annotations.Operation;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
 
 @RestController
 @RequiredArgsConstructor
@@ -30,5 +35,17 @@ public class BookmarkController {
         bookmarkService.deleteBookmark(productId, member);
 
         return ResponseEntity.ok().build();
+    }
+
+    @GetMapping
+    @Operation(summary = "북마크 리스트 조회 api", description = "해당 멤버의 상품찜 리스트를 보여준다.")
+    public ResponseEntity<SliceResponse<BookmarkProductsResponse>> readALlBookmark(
+            @AuthenticationPrincipal CustomMemberDetails memberDetails,
+            @RequestParam(required = false, defaultValue = "0") int cursor,
+            @RequestParam(defaultValue = "20") int size){
+
+        SliceResponse<BookmarkProductsResponse> responses = bookmarkService.readALlBookmark(memberDetails, cursor, size);
+
+        return ResponseEntity.ok(responses);
     }
 }
