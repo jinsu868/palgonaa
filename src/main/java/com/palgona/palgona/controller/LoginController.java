@@ -36,7 +36,7 @@ public class LoginController {
 
     @PostMapping(
             value = "/signup",
-            consumes = {MediaType.APPLICATION_JSON_VALUE, MediaType.MULTIPART_FORM_DATA_VALUE})
+            consumes = {MediaType.MULTIPART_FORM_DATA_VALUE})
     @Operation(summary = "회원 가입 api", description = "닉네임, 프로필을 받아서 회원가입을 진행한다.")
     public ResponseEntity<Void> create(
             @AuthenticationPrincipal CustomMemberDetails member,
