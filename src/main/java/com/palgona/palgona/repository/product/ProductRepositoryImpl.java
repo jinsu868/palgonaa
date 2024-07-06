@@ -9,6 +9,7 @@ import static com.palgona.palgona.domain.product.QProductImage.productImage;
 
 import com.palgona.palgona.common.dto.response.SliceResponse;
 import com.palgona.palgona.domain.product.Category;
+import com.palgona.palgona.domain.product.ProductState;
 import com.palgona.palgona.domain.product.SortType;
 import com.palgona.palgona.dto.response.ProductPageResponse;
 import com.palgona.palgona.repository.product.querydto.ImageQueryResponse;
@@ -92,7 +93,7 @@ public class ProductRepositoryImpl implements ProductRepositoryCustom {
                 .from(product)
                 .leftJoin(bidding).on(bidding.product.id.eq(product.id))
                 .leftJoin(bookmark).on(bookmark.product.id.eq(product.id))
-                .where(contains(searchWord), categoryEq(category))
+                .where(contains(searchWord), categoryEq(category), stateIsNotDeleted())
                 .groupBy(product.id)
                 .having(isInSearchRange(cursor, sortType))
                 .orderBy(createOrderSpecifier(sortType))
@@ -142,6 +143,10 @@ public class ProductRepositoryImpl implements ProductRepositoryCustom {
         }
 
         return null;
+    }
+
+    private BooleanExpression stateIsNotDeleted() {
+        return product.productState.ne(ProductState.DELETED);
     }
 
     private BooleanExpression contains(String searchWord) {
