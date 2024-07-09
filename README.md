@@ -60,14 +60,14 @@
 <br>
 
 # API 명세서 
+<img width="971" alt="image" src="https://github.com/Palgona/Backend/assets/110288718/b2694453-35a7-4b15-bf90-dc94b3cacaf8">
+<img width="979" alt="image" src="https://github.com/Palgona/Backend/assets/110288718/a0a0f114-58ca-4e17-91d4-c12b442052bf">
+<img width="970" alt="image" src="https://github.com/Palgona/Backend/assets/110288718/500fed72-d9a5-4163-ad0c-07242998dbc3">
 
 <br>
 
 # 역할
-| 분야 | 이름 | 포지션 |
-| --- | --- | --- |
-| 프론트 | [<img src="https://avatars.githubusercontent.com/seayen" width="130px;" style="max-width: 100%;">](https://github.com/seayen)  |   |
-| 프론트 | [<img src="https://avatars.githubusercontent.com/juhui0534" width="130px;" style="max-width: 100%;">](https://github.com/juhui0534)  |   |
-| 백엔드 | [<img src="https://avatars.githubusercontent.com/JangWooJin1" width="130px;" style="max-width: 100%;">](https://github.com/JangWooJin1) |   |
-| 백엔드 | [<img src="https://avatars.githubusercontent.com/janghoosa" width="130px;" style="max-width: 100%;">](https://github.com/janghoosa) | 소비자 데이터 분석 |
-| 백엔드 | [<img src="https://avatars.githubusercontent.com/jinsu868" width="130px;" style="max-width: 100%;">](https://github.com/jinsu868)  |   |
+| 김가영 | 박주희 | 문진수 | 장우진 | 장태준 |
+|---------------------------|----------------------|----------------------|----------------------|----------------------|
+| [<img src="https://avatars.githubusercontent.com/ryong1" width="130px;" style="max-width: 100%;">](https://github.com/ryong1) | [<img src="https://avatars.githubusercontent.com/juhui0534" width="130px;" style="max-width: 100%;">](https://github.com/juhui0534) | [<img src="https://avatars.githubusercontent.com/jinsu868" width="130px;" style="max-width: 100%;">](https://github.com/jinsu868)  | [<img src="https://avatars.githubusercontent.com/JangWooJin1" width="130px;" style="max-width: 100%;">](https://github.com/JangWooJin1) | [<img src="https://avatars.githubusercontent.com/janghoosa" width="130px;" style="max-width: 100%;">](https://github.com/janghoosa) |
+| FE | FE | BE | BE | BE | 
