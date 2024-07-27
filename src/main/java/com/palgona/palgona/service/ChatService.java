@@ -93,7 +93,8 @@ public class ChatService {
 
     public List<ChatMessage> getMessageByRoom(Member member, Long roomId) {
         ChatRoom room = findChatRoom(roomId);
-        if (!room.hasMember(member)) {
+        Member receiver = findMember(member.getId());
+        if (!room.hasMember(receiver)) {
             throw new BusinessException(ChatErrorCode.INVALID_MEMBER);
         }
         return chatMessageRepository.findAllByRoom(room);
