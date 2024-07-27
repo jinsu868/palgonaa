@@ -19,6 +19,8 @@ public record ProductDetailQueryResponse(
         String ownerName,
         String ownerImgUrl,
         Integer highestBid,
-        Long bookmarkCount
+        Long bookmarkCount,
+        Long chatroomCount,
+        Boolean isSilent
 ) {
 }

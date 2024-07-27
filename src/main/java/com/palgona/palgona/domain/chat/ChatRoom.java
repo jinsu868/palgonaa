@@ -2,6 +2,7 @@ package com.palgona.palgona.domain.chat;
 
 import com.palgona.palgona.common.entity.BaseTimeEntity;
 import com.palgona.palgona.domain.member.Member;
+import com.palgona.palgona.domain.product.Product;
 import jakarta.persistence.*;
 import lombok.Builder;
 import lombok.Getter;
@@ -40,6 +41,9 @@ public class ChatRoom extends BaseTimeEntity {
 
     @OneToMany(fetch = FetchType.LAZY)
     private List<ChatMessage> chatMessages;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    private Product product;
 
     @Builder
     ChatRoom(Member sender, Member receiver){

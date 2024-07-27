@@ -21,4 +21,7 @@ public interface ImageRepository extends JpaRepository<Image, Long> {
      where i.imageUrl in :urls
     """)
     void deleteByImageUrls(List<String> urls);
+
+    @Query("select i from Image i join ProductImage pi on pi.image = i where pi.product.id = :productId")
+    List<Image> findAllByProductId(Long productId);
 }
