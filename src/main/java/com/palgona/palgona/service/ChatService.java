@@ -79,9 +79,10 @@ public class ChatService {
     public void readMessage(Member member, ReadMessageRequest request) {
         // 가장 최근에 읽은 데이터를 표시해야함.
         // 현재 연결되어서 바로 읽었는지 확인이 필요함.
+        Member receiver = findMember(member.getId());
         ChatMessage message = chatMessageRepository.findById(request.messageId())
                 .orElseThrow(() -> new BusinessException(ChatErrorCode.MESSAGE_NOT_FOUND));
-        ChatReadStatus chatReadStatus = chatReadStatusRepository.findByMemberAndRoom(member, message.getRoom());
+        ChatReadStatus chatReadStatus = chatReadStatusRepository.findByMemberAndRoom(receiver, message.getRoom());
         chatReadStatus.updateCursor(message.getId());
         chatReadStatusRepository.save(chatReadStatus);
     }
