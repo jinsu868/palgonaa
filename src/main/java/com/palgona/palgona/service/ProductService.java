@@ -118,43 +118,6 @@ public class ProductService {
         return ProductDetailResponse.from(queryResponse, imageUrls);
     }
 
-//
-//
-//    public ProductDetailResponse readProduct(Long productId, CustomMemberDetails memberDetail){
-//        Member member = memberDetail.getMember();
-//
-//        //1. 상품 정보 가져오기(상품, 멤버, 최고 입찰가, 북마크 개수)
-//        //Todo: 1-2. 채팅 개수 정보 가져오기
-//        ProductDetailQueryResponse queryResponse = productRepository.findProductWithAll(productId)
-//                .orElseThrow(() -> new BusinessException(NOT_FOUND));
-//
-//        log.info("1. 상품 정보 : " + queryResponse.toString());
-//
-//        //2. 상품이 삭제되었는지 확인
-//
-//        if(queryResponse.productState() == ProductState.DELETED){
-//            throw new BusinessException(DELETED_PRODUCT);
-//        }
-//
-//        log.info("2. 상품 삭제 확인 완료");
-//
-//        //3. 상품 이미지 가져오기
-//        List<String> imageUrls = productImageRepository.findProductImageUrlsByProduct(productId);
-//
-//        log.info("3. 상품 이미지 : " + imageUrls.toString());
-//
-//        //Todo: 아래 쿼리 리펙토링 할것
-//        Product product = productRepository.findById(queryResponse.productId())
-//                .orElseThrow(() ->new BusinessException(NOT_FOUND));
-//
-//        //4. 해당 상품에 대한 사용자 알림 상태 확인
-//        boolean isSilent = silentNotificationsRepository.findByMemberAndProduct(member, product)
-//                .isPresent();
-//
-//        log.info("4. 사용자 알림 상태 확인 : " + isSilent);
-//        return ProductDetailResponse.from(queryResponse, imageUrls, isSilent);
-//    }
-
     @Transactional(readOnly = true)
     public SliceResponse<ProductPageResponse> readProducts(SortType sortType,
                                                            Category category,
