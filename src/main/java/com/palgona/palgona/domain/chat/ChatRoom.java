@@ -50,7 +50,7 @@ public class ChatRoom extends BaseTimeEntity {
     }
 
     public boolean hasMember(Member member) {
-        return member.equals(sender) || member.equals(receiver);
+        return member.getId().equals(sender.getId()) || member.getId().equals(receiver.getId());
     }
 }
 
