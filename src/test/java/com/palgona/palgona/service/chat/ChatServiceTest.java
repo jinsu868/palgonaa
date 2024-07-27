@@ -167,7 +167,7 @@ class ChatServiceTest {
         Member receiver = Member.of(mileage, status, socialId, role);
         ChatRoom room = ChatRoom.builder().sender(sender).receiver(receiver).build();
         ChatReadStatus chatReadStatus = ChatReadStatus.builder().room(room).member(sender).build();
-
+        Member member = mock(Member.class);
         Long messageId = 100L;
         ReadMessageRequest request = new ReadMessageRequest(messageId);
         ChatMessage message = mock(ChatMessage.class);
@@ -176,9 +176,13 @@ class ChatServiceTest {
         given(chatReadStatusRepository.findByMemberAndRoom(sender, room)).willReturn(chatReadStatus);
         given(message.getId()).willReturn(messageId);
         given(message.getRoom()).willReturn(room);
+        given(message.getReceiver()).willReturn(receiver);
+        given(message.getSender()).willReturn(sender);
+        given(member.getId()).willReturn(1L);
+        given(memberRepository.findById(1L)).willReturn(Optional.of(sender));
 
         // when
-        chatService.readMessage(sender, request);
+        chatService.readMessage(member, request);
 
         // then
         verify(chatReadStatusRepository, times(1)).save(chatReadStatus);
@@ -198,8 +202,16 @@ class ChatServiceTest {
         ChatRoom room = ChatRoom.builder().sender(sender).receiver(receiver).build();
         Long roomId = 1L;
 
-        ChatMessage message = mock(ChatMessage.class);
+        ChatMessage message = ChatMessage.builder()
+                .sender(sender)
+                .receiver(receiver)
+                .message("mock")
+                .room(room)
+                .type(ChatType.TEXT)
+                .build();
 
+        given(memberRepository.findById(1L)).willReturn(Optional.of(sender));
+        given(memberRepository.findById(2L)).willReturn(Optional.of(receiver));
         given(chatRoomRepository.findById(roomId)).willReturn(Optional.ofNullable(room));
         given(chatMessageRepository.findAllByRoom(room)).willReturn(Collections.singletonList(message));
 
@@ -279,12 +291,15 @@ class ChatServiceTest {
         Member sender = Member.of(mileage, status, socialId, role);
         Long messageId = 100L;
         ReadMessageRequest request = new ReadMessageRequest(messageId);
+        Member member = mock(Member.class);
 
         given(chatMessageRepository.findById(messageId)).willReturn(Optional.empty());
+        given(member.getId()).willReturn(1L);
+        given(memberRepository.findById(1L)).willReturn(Optional.of(sender));
 
         // when
         BusinessException exception = assertThrows(BusinessException.class,
-                () -> chatService.readMessage(sender, request));
+                () -> chatService.readMessage(member, request));
 
         // then
         assertEquals(ChatErrorCode.MESSAGE_NOT_FOUND, exception.getErrorCode());
