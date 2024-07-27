@@ -209,14 +209,16 @@ class ChatServiceTest {
                 .room(room)
                 .type(ChatType.TEXT)
                 .build();
+        Member member = mock(Member.class);
 
+        given(member.getId()).willReturn(1L);
         given(memberRepository.findById(1L)).willReturn(Optional.of(sender));
         given(memberRepository.findById(2L)).willReturn(Optional.of(receiver));
         given(chatRoomRepository.findById(roomId)).willReturn(Optional.ofNullable(room));
         given(chatMessageRepository.findAllByRoom(room)).willReturn(Collections.singletonList(message));
 
         // when
-        List<ChatMessage> chatMessages = chatService.getMessageByRoom(sender, roomId);
+        List<ChatMessage> chatMessages = chatService.getMessageByRoom(member, roomId);
 
         // then
         assertEquals(chatMessages, Collections.singletonList(message));
