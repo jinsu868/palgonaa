@@ -1,0 +1,3 @@
+[submodule "palgona-yml-manager"]
+	path = palgona-yml-manager
+	url = https://github.com/Palgona/palgona-yml-manager.git
