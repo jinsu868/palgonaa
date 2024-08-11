@@ -72,3 +72,29 @@ tasks.named("jar") {
     enabled = false
 }
 
+tasks.register('copyYml', Copy) {
+    from "./palgona-yml-manager/yml/main"
+    include "*.yml"
+    into "./src/main/resources"
+}
+
+tasks.register('copyJson', Copy) {
+    from "./palgona-yml-manager/yml/main"
+    include "*.json"
+    into "./src/main/resources"
+}
+
+tasks.register('copyTestJson', Copy) {
+    from "./palgona-yml-manager/yml/test"
+    include "*.json"
+    into "./src/test/resources"
+}
+
+tasks.register('copyTestYml', Copy) {
+    from "./palgona-yml-manager/yml/test"
+    include "*.yml"
+    into "./src/test/resources"
+}
+
+processResources.dependsOn('copyJson', 'copyYml')
+processTestResources.dependsOn('copyTestJson', 'copyTestYml')
