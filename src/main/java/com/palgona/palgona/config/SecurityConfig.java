@@ -5,7 +5,7 @@ import com.palgona.palgona.common.jwt.handler.JwtAccessDeniedHandler;
 import com.palgona.palgona.common.jwt.handler.JwtAuthenticationEntryPoint;
 import com.palgona.palgona.common.jwt.util.JwtUtils;
 import com.palgona.palgona.common.redis.RedisUtils;
-import com.palgona.palgona.repository.member.MemberRepository;
+import com.palgona.palgona.member.domain.MemberRepository;
 import com.palgona.palgona.common.jwt.util.TokenExtractor;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;

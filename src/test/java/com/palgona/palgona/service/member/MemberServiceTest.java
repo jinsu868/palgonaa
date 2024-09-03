@@ -2,21 +2,19 @@ package com.palgona.palgona.service.member;
 
 import static org.assertj.core.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.doNothing;
 import static org.springframework.http.MediaType.IMAGE_PNG_VALUE;
 
 import com.palgona.palgona.common.dto.CustomMemberDetails;
-import com.palgona.palgona.domain.member.Member;
-import com.palgona.palgona.domain.member.Role;
-import com.palgona.palgona.domain.member.Status;
-import com.palgona.palgona.dto.MemberUpdateRequest;
-import com.palgona.palgona.repository.member.MemberRepository;
-import com.palgona.palgona.service.MemberService;
-import com.palgona.palgona.service.image.S3Service;
+import com.palgona.palgona.member.domain.Member;
+import com.palgona.palgona.member.domain.Role;
+import com.palgona.palgona.member.domain.Status;
+import com.palgona.palgona.member.dto.request.MemberUpdateRequest;
+import com.palgona.palgona.member.domain.MemberRepository;
+import com.palgona.palgona.member.application.MemberService;
+import com.palgona.palgona.image.application.S3Service;
 import java.util.Optional;
-import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;

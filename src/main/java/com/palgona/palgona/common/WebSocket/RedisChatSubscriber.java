@@ -2,7 +2,7 @@ package com.palgona.palgona.common.WebSocket;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.palgona.palgona.dto.chat.ChatMessageResponse;
+import com.palgona.palgona.chat.dto.response.ChatMessageResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.connection.Message;

@@ -6,13 +6,13 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.palgona.palgona.common.dto.response.SliceResponse;
 import com.palgona.palgona.common.jwt.util.JwtUtils;
-import com.palgona.palgona.domain.member.Member;
-import com.palgona.palgona.domain.member.Role;
-import com.palgona.palgona.domain.member.Status;
-import com.palgona.palgona.domain.product.SortType;
-import com.palgona.palgona.dto.response.ProductPageResponse;
-import com.palgona.palgona.repository.member.MemberRepository;
-import com.palgona.palgona.service.ProductService;
+import com.palgona.palgona.member.domain.Member;
+import com.palgona.palgona.member.domain.Role;
+import com.palgona.palgona.member.domain.Status;
+import com.palgona.palgona.product.domain.SortType;
+import com.palgona.palgona.product.dto.response.ProductPageResponse;
+import com.palgona.palgona.member.domain.MemberRepository;
+import com.palgona.palgona.product.application.ProductService;
 import java.time.LocalDateTime;
 import java.util.List;
 import org.junit.jupiter.api.BeforeEach;

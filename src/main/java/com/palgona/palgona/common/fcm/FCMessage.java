@@ -1,6 +1,6 @@
 package com.palgona.palgona.common.fcm;
 
-import com.palgona.palgona.domain.notification.Type;
+import com.palgona.palgona.notification.domain.Type;
 
 public record FCMessage(boolean validateOnly, Message message) {
 

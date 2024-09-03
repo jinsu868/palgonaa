@@ -1,7 +1,5 @@
 package com.palgona.palgona.config;
 
-import com.palgona.palgona.repository.product.ProductRepository;
-import com.palgona.palgona.repository.product.ProductRepositoryImpl;
 import com.querydsl.jpa.impl.JPAQueryFactory;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;

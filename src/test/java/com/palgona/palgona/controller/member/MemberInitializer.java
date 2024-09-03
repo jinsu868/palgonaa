@@ -1,9 +1,9 @@
 package com.palgona.palgona.controller.member;
 
-import com.palgona.palgona.domain.member.Member;
-import com.palgona.palgona.domain.member.Role;
-import com.palgona.palgona.domain.member.Status;
-import com.palgona.palgona.repository.member.MemberRepository;
+import com.palgona.palgona.member.domain.Member;
+import com.palgona.palgona.member.domain.Role;
+import com.palgona.palgona.member.domain.Status;
+import com.palgona.palgona.member.domain.MemberRepository;
 import jakarta.annotation.PostConstruct;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;

@@ -3,9 +3,9 @@ package com.palgona.palgona.common.jwt.util;
 import static com.palgona.palgona.common.error.code.AuthErrorCode.ILLEGAL_TOKEN;
 
 import com.palgona.palgona.common.error.exception.BusinessException;
-import com.palgona.palgona.domain.RefreshToken;
-import com.palgona.palgona.dto.AuthToken;
-import com.palgona.palgona.repository.RefreshTokenRepository;
+import com.palgona.palgona.auth.domain.RefreshToken;
+import com.palgona.palgona.auth.dto.AuthToken;
+import com.palgona.palgona.auth.domain.RefreshTokenRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;

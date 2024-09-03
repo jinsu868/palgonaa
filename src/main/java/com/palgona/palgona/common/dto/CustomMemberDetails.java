@@ -1,6 +1,6 @@
 package com.palgona.palgona.common.dto;
 
-import com.palgona.palgona.domain.member.Member;
+import com.palgona.palgona.member.domain.Member;
 import java.util.ArrayList;
 import java.util.Collection;
 import org.springframework.security.core.GrantedAuthority;
