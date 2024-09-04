@@ -18,7 +18,7 @@ public interface ProductRepository extends JpaRepository<Product, Long>, Product
 
 
     @Query(""" 
-           select new com.palgona.palgona.repository.product.querydto.ProductDetailQueryResponse(
+           select new com.palgona.palgona.product.infrastructure.querydto.ProductDetailQueryResponse(
            p.id,
            p.name,
            p.content,
@@ -38,7 +38,7 @@ public interface ProductRepository extends JpaRepository<Product, Long>, Product
            join p.member m
            where p.id = :productId
             
-""")
+    """)
     Optional<ProductDetailQueryResponse> findProductDetailsById(Long productId, Member member);
 
 

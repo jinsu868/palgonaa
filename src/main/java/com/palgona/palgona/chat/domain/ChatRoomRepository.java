@@ -15,7 +15,7 @@ public interface ChatRoomRepository extends JpaRepository<ChatRoom, Long> {
     @Query("select c from ChatRoom c where c.sender = :member or c.receiver = :member")
     List<ChatRoom> findBySenderOrReceiver(Member member);
 
-    @Query("SELECT new com.palgona.palgona.dto.chat.ChatRoomCountResponse(cr.id, cr.sender.id, cr.receiver.id, COUNT(cm)) " +
+    @Query("SELECT new com.palgona.palgona.chat.dto.response.ChatRoomCountResponse(cr.id, cr.sender.id, cr.receiver.id, COUNT(cm)) " +
             "FROM ChatRoom cr " +
             "LEFT JOIN cr.chatMessages cm " +
             "WHERE (cr.sender = :member OR cr.receiver = :member) " +

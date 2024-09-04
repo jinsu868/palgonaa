@@ -18,8 +18,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Repository;
 
 @RequiredArgsConstructor
+@Repository
 public class PurchaseRepositoryImpl implements PurchaseRepositoryCustom {
 
     private final JPAQueryFactory queryFactory;

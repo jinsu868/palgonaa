@@ -30,8 +30,10 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Repository;
 
 @RequiredArgsConstructor
+@Repository
 public class ProductRepositoryImpl implements ProductRepositoryCustom {
 
     private static final int MAX_PRICE_DIGIT = 9;

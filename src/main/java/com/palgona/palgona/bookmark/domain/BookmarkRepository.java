@@ -23,7 +23,7 @@ public interface BookmarkRepository extends JpaRepository<Bookmark, Long> {
     void deleteByProduct(Product product);
 
     @Query("""
-        select new com.palgona.palgona.dto.BookmarkProductsResponse(
+        select new com.palgona.palgona.bookmark.dto.response.BookmarkProductsResponse(
             p.id,
             p.name,
             p.deadline,
