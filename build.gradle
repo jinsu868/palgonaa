@@ -96,5 +96,15 @@ tasks.register('copyTestYml', Copy) {
     into "./src/test/resources"
 }
 
+tasks.register('copySql', Copy) {
+    from "./palgona-yml-manager/sql"
+    include "*.sql"
+    into "./src/main/resources"
+}
+
+tasks.named('processResources') {
+    dependsOn 'copySql'
+}
+
 processResources.dependsOn('copyJson', 'copyYml')
 processTestResources.dependsOn('copyTestJson', 'copyTestYml')
