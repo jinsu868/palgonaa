@@ -3,9 +3,11 @@ package com.palgona.palgona.product.application;
 import com.palgona.palgona.bookmark.domain.BookmarkRepository;
 import com.palgona.palgona.common.dto.CustomMemberDetails;
 import com.palgona.palgona.common.dto.response.SliceResponse;
+import com.palgona.palgona.common.error.code.ProductErrorCode;
 import com.palgona.palgona.common.error.exception.BusinessException;
 import com.palgona.palgona.fcm.domain.SilentNotifications;
 import com.palgona.palgona.image.domain.Image;
+import com.palgona.palgona.image.util.FileUtils;
 import com.palgona.palgona.member.domain.Member;
 import com.palgona.palgona.notification.domain.SilentNotificationsRepository;
 import com.palgona.palgona.product.domain.Category;
@@ -21,10 +23,12 @@ import com.palgona.palgona.bidding.domain.BiddingRepository;
 import com.palgona.palgona.image.domain.ImageRepository;
 import com.palgona.palgona.product.domain.ProductImageRepository;
 import com.palgona.palgona.product.domain.ProductRepository;
+import com.palgona.palgona.product.event.ImageUploadEvent;
 import com.palgona.palgona.product.infrastructure.querydto.ProductDetailQueryResponse;
 import com.palgona.palgona.image.application.S3Service;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -49,6 +53,7 @@ public class ProductService {
     private final BiddingRepository biddingRepository;
     private final S3Service s3Service;
     private final SilentNotificationsRepository silentNotificationsRepository;
+    private final ApplicationEventPublisher publisher;
 
     @Transactional
     public void createProduct(ProductCreateRequest request, List<MultipartFile> imageFiles, CustomMemberDetails memberDetails) {
@@ -263,6 +268,31 @@ public class ProductService {
         silentNotificationsRepository.delete(silentNotifications);
     }
 
+    @Transactional
+    public void addImage(Member member, Long productId, MultipartFile file) {
+        Product product = productRepository.findById(productId)
+                .orElseThrow(() -> new BusinessException(NOT_FOUND));
+
+        if (!product.isOwner(member)) {
+            throw new BusinessException(INSUFFICIENT_PERMISSION);
+        }
+
+        String imageUrl = FileUtils.createFileName(file.getOriginalFilename());
+        Image image = Image.builder()
+                .imageUrl(imageUrl)
+                .build();
+
+        imageRepository.save(image);
+
+        ProductImage productImage = ProductImage.builder()
+                .product(product)
+                .image(image)
+                .build();
+
+        productImageRepository.save(productImage);
+        publisher.publishEvent(new ImageUploadEvent(file));
+    }
+
     private void checkRelatedBidding(Product product){
         if (biddingRepository.existsByProduct(product)) {
             throw new BusinessException(RELATED_BIDDING_EXISTS);
@@ -294,5 +324,4 @@ public class ProductService {
             throw new BusinessException(INVALID_DEADLINE);
         }
     }
-
 }

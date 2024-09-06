@@ -15,6 +15,7 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 
 @RequiredArgsConstructor
@@ -84,6 +85,23 @@ public class ProductController {
 
         return ResponseEntity.ok().build();
     }
+
+    @PostMapping(
+            value = "/{productId}",
+            consumes = {MediaType.APPLICATION_JSON_VALUE, MediaType.MULTIPART_FORM_DATA_VALUE})
+    public ResponseEntity<Void> addImage(
+            @AuthenticationPrincipal CustomMemberDetails member,
+            @PathVariable Long productId,
+            @RequestPart MultipartFile file
+    ) {
+
+        productService.addImage(member.getMember(), productId, file);
+
+        return ResponseEntity.ok()
+                .header("Location", "/api/v1/products/" + productId)
+                .build();
+    }
+
 
     @PostMapping("/{productId}/Notifications")
     @Operation(summary = "상품 알림 무시 api", description = "상품 id를 받아 해당 상품에 대한 알림 무시를 활성화한다.")

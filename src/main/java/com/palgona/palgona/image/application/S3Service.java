@@ -7,6 +7,7 @@ import com.amazonaws.services.s3.model.ObjectMetadata;
 import com.amazonaws.services.s3.model.PutObjectRequest;
 import com.palgona.palgona.common.error.code.ChatErrorCode;
 import com.palgona.palgona.common.error.exception.BusinessException;
+import com.palgona.palgona.image.util.FileUtils;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -29,10 +30,8 @@ public class S3Service {
     private final AmazonS3 AmazonS3;
 
     public String upload(MultipartFile file) {
-        log.info("file name : {}", file.getName());
-        log.info("file OriginalName : {}", file.getOriginalFilename());
         String imageUrl = "";
-        String fileName = createFileName(file.getOriginalFilename());
+        String fileName = FileUtils.createFileName(file.getOriginalFilename());
         ObjectMetadata objectMetadata = new ObjectMetadata();
         objectMetadata.setContentLength(file.getSize());
         objectMetadata.setContentType(file.getContentType());
@@ -44,6 +43,7 @@ public class S3Service {
         } catch (IOException e) {
             throw new IllegalArgumentException("failed to upload");
         }
+        log.info("imageUrl : {}", imageUrl);
         return imageUrl;
     }
 
@@ -55,11 +55,6 @@ public class S3Service {
 
     private String parseKeyUrl(String imageUrl) {
         return imageUrl.substring(imageUrl.lastIndexOf('/') + 1);
-    }
-
-    private String createFileName(String fileName) {
-        FileExtension extension = FileExtension.from(fileName);
-        return UUID.randomUUID().toString().concat(extension.getExtension());
     }
 
     public String uploadBase64Image(String base64Image) {
