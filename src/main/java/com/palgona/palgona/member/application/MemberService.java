@@ -43,7 +43,8 @@ public class MemberService {
     @Transactional
     public void update(
             CustomMemberDetails loginMember,
-            MemberUpdateRequest memberUpdateRequest) {
+            MemberUpdateRequest memberUpdateRequest
+    ) {
 
         String socialId = loginMember.getUsername();
         Member member = memberRepository.findBySocialId(socialId)
@@ -52,7 +53,6 @@ public class MemberService {
         s3Service.deleteFile(member.getProfileImage());
         String imageUrl = s3Service.upload(memberUpdateRequest.image());
 
-        //TODO : nickName, profileImage 묶어서 embedded 타입으로 빼기
         member.updateNickName(memberUpdateRequest.nickName());
         member.updateProfileImage(imageUrl);
     }

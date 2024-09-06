@@ -2,6 +2,7 @@ package com.palgona.palgona.member.presentation;
 
 import com.palgona.palgona.common.dto.CustomMemberDetails;
 import com.palgona.palgona.common.dto.response.SliceResponse;
+import com.palgona.palgona.member.dto.request.MemberUpdateRequestWithoutImage;
 import com.palgona.palgona.member.dto.response.MemberDetailResponse;
 import com.palgona.palgona.member.dto.response.MemberResponse;
 import com.palgona.palgona.member.dto.request.MemberUpdateRequest;
@@ -17,7 +18,9 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
 
 @RestController
 @RequiredArgsConstructor
@@ -60,10 +63,11 @@ public class MemberController {
     @Operation(summary = "맴버 정보 수정 api", description = "닉네임과 프로필 이미지를 받아서 맴버 정보를 수정한다.")
     public ResponseEntity<Void> update(
             @AuthenticationPrincipal CustomMemberDetails member,
-            @ModelAttribute MemberUpdateRequest request
+            @RequestPart(required = false) MultipartFile file,
+            @RequestPart MemberUpdateRequestWithoutImage request
     ) {
 
-        memberService.update(member, request);
+        memberService.update(member, MemberUpdateRequest.of(request, file));
 
         return ResponseEntity.ok()
                 .header("Location", "/api/v1/members/"
