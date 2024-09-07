@@ -1,6 +1,9 @@
 package com.palgona.palgona.product.event;
 
-import org.springframework.web.multipart.MultipartFile;
+import com.palgona.palgona.image.dto.ImageUploadRequest;
+import java.util.List;
 
-public record ImageUploadEvent(MultipartFile file) {
+public record ImageUploadEvent(
+        List<ImageUploadRequest> imageUploadRequests
+) {
 }

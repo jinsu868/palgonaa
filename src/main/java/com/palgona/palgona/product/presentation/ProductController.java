@@ -6,10 +6,11 @@ import com.palgona.palgona.product.domain.Category;
 import com.palgona.palgona.product.domain.SortType;
 import com.palgona.palgona.product.dto.request.ProductCreateRequest;
 import com.palgona.palgona.product.dto.response.ProductDetailResponse;
-import com.palgona.palgona.product.dto.request.ProductUpdateRequest;
+import com.palgona.palgona.product.dto.request.ProductUpdateRequestWithoutImage;
 import com.palgona.palgona.product.dto.response.ProductPageResponse;
 import com.palgona.palgona.product.application.ProductService;
 import io.swagger.v3.oas.annotations.Operation;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -77,11 +78,12 @@ public class ProductController {
     @Operation(summary = "상품 수정 api", description = "상품 id를 받아 해당 상품 수정 처리를 진행한다.")
     public ResponseEntity<Void> updateProduct(
             @PathVariable Long productId,
-            @ModelAttribute ProductUpdateRequest request,
+            @RequestPart ProductUpdateRequestWithoutImage request,
+            @RequestPart List<MultipartFile> files,
             @AuthenticationPrincipal CustomMemberDetails member
     ){
 
-        productService.updateProduct(productId, request, request.files(), member);
+        productService.updateProduct(productId, request, files, member.getMember());
 
         return ResponseEntity.ok().build();
     }
