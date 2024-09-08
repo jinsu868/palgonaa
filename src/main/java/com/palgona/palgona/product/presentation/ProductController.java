@@ -67,9 +67,12 @@ public class ProductController {
 
     @DeleteMapping("/{productId}")
     @Operation(summary = "상품 삭제 api", description = "상품 id를 받아 해당 상품 삭제 처리를 진행한다. ")
-    public ResponseEntity<Void> deleteProduct(@PathVariable Long productId, @AuthenticationPrincipal CustomMemberDetails member){
+    public ResponseEntity<Void> deleteProduct(
+            @PathVariable Long productId,
+            @AuthenticationPrincipal CustomMemberDetails loginMember
+    ) {
 
-        productService.deleteProduct(productId, member);
+        productService.deleteProduct(productId, loginMember.getMember());
 
         return ResponseEntity.ok().build();
     }

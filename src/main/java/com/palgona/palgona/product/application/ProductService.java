@@ -116,36 +116,16 @@ public class ProductService {
     }
 
     @Transactional
-    public void deleteProduct(Long productId, CustomMemberDetails memberDetails){
+    public void deleteProduct(Long productId, Member member) {
 
-        Member member = memberDetails.getMember();
+        Product product = findProduct(productId);
 
-        Product product = productRepository.findById(productId)
-                .orElseThrow(() -> new BusinessException(NOT_FOUND));
+        validateProductPermission(member, product);
+        validateProductDelete(product);
 
-
-        //1. 상품에 대한 권한 확인
-        checkPermission(member, product);
-
-        //2. 입찰 내역에 있는 상품인지 확인
-        checkRelatedBidding(product);
-
-        //Todo: 3. 구매 내역에 있는 상품인지 체크
-
-        //4. 상품과 관련된 이미지 및 이미지 연관관계 삭제 (soft delete면 아래 로직 수행 x)
-//        List<ProductImage> productImages = productImageRepository.findByProduct(product);
-//        for (ProductImage productImage : productImages) {
-//            Image image = productImage.getImage();
-//            s3Service.deleteFile(image.getImageUrl());
-//            productImageRepository.delete(productImage);
-//            imageRepository.delete(image);
-//        }
-
-        //4. 상품과 관련된 정보들 삭제
-        //4-1. 상품 찜 정보 삭제
         bookmarkRepository.deleteByProduct(product);
 
-        //5. 상품의 상태를 DELETED로 업데이트 (soft delete)
+        // TODO: history 테이블로 이전시키기
         product.updateProductState(ProductState.DELETED);
     }
 
@@ -205,13 +185,13 @@ public class ProductService {
         publisher.publishEvent(ImageUploadEvent.from(List.of(ImageUploadRequest.of(file, uploadFileName))));
     }
 
-    private void checkRelatedBidding(Product product){
+    private void validateProductDelete(Product product){
         if (biddingRepository.existsByProduct(product)) {
             throw new BusinessException(RELATED_BIDDING_EXISTS);
         }
     }
 
-    private void checkPermission(Member member, Product product) {
+    private void validateProductPermission(Member member, Product product) {
         if (!(product.isOwner(member) || member.isAdmin())) {
             throw new BusinessException(INSUFFICIENT_PERMISSION);
         }
@@ -221,5 +201,10 @@ public class ProductService {
         return images.stream()
                 .map(image -> image.getImageId())
                 .toList();
+    }
+
+    private Product findProduct(Long productId) {
+        return productRepository.findById(productId)
+                .orElseThrow(() -> new BusinessException(NOT_FOUND));
     }
 }
