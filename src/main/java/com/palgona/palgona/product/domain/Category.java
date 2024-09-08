@@ -1,6 +1,9 @@
 package com.palgona.palgona.product.domain;
 
 
+import static com.palgona.palgona.common.error.code.ProductErrorCode.INVALID_CATEGORY;
+
+import com.palgona.palgona.common.error.exception.BusinessException;
 import java.util.Arrays;
 import lombok.Getter;
 
@@ -15,13 +18,6 @@ public enum Category {
 
     private final String key;
     private final String value;
-
-    public static Category from(String name) {
-        return Arrays.stream(values())
-                .filter(category -> category.getKey().equals(name))
-                .findAny()
-                .orElse(null);
-    }
 
     Category(String key, String value) {
         this.key = key;
