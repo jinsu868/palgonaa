@@ -10,6 +10,9 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.palgona.palgona.common.dto.CustomMemberDetails;
 import com.palgona.palgona.common.error.exception.BusinessException;
 import com.palgona.palgona.common.redis.RedisUtils;
+import com.palgona.palgona.image.application.S3Service;
+import com.palgona.palgona.image.dto.ImageUploadRequest;
+import com.palgona.palgona.image.util.FileUtils;
 import com.palgona.palgona.member.domain.Member;
 import com.palgona.palgona.member.domain.Role;
 import com.palgona.palgona.member.domain.Status;
@@ -17,11 +20,14 @@ import com.palgona.palgona.auth.dto.response.KakaoUserInfoResponse;
 import com.palgona.palgona.auth.dto.response.LoginResponse;
 import com.palgona.palgona.member.dto.request.MemberCreateRequest;
 import com.palgona.palgona.member.domain.MemberRepository;
-import com.palgona.palgona.image.domain.S3Client;
+import com.palgona.palgona.product.event.ImageUploadEvent;
 import jakarta.servlet.http.HttpServletRequest;
+import java.util.ArrayList;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
@@ -47,9 +53,10 @@ public class LoginService {
     private Long accessExpirationTime;
 
     private final MemberRepository memberRepository;
-    private final S3Client s3Client;
+    private final S3Service s3Service;
     private final RestTemplate restTemplate;
     private final RedisUtils redisUtils;
+    private final ApplicationEventPublisher publisher;
 
     public Long signUp(CustomMemberDetails loginMember, MemberCreateRequest memberCreateRequest) {
         Member member = findMemberBySocialId(loginMember);
@@ -158,11 +165,13 @@ public class LoginService {
                 () -> new BusinessException(MEMBER_NOT_FOUND));
     }
 
-
-    //TODO: 이미지 업로드 수정
     private String uploadImage(MultipartFile image) {
+        String uploadFileName = FileUtils.createFileName(image.getOriginalFilename());
+        List<ImageUploadRequest> uploadRequests = new ArrayList<>();
+        uploadRequests.add(ImageUploadRequest.of(image, uploadFileName));
         if (image != null) {
-            return s3Client.upload(image, "QWER");
+            publisher.publishEvent(ImageUploadEvent.from(uploadRequests));
+            return s3Service.generateS3FileUrl(uploadFileName);
         }
         return defaultImage;
     }

@@ -9,6 +9,7 @@ import com.palgona.palgona.auth.dto.AuthToken;
 import com.palgona.palgona.auth.dto.response.LoginResponse;
 import com.palgona.palgona.member.dto.request.MemberCreateRequest;
 import com.palgona.palgona.auth.application.LoginService;
+import com.palgona.palgona.member.dto.request.MemberCreateRequestWithoutImage;
 import io.swagger.v3.oas.annotations.Operation;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -21,7 +22,9 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
 
 @RestController
 @RequiredArgsConstructor
@@ -40,9 +43,12 @@ public class LoginController {
     @Operation(summary = "회원 가입 api", description = "닉네임, 프로필을 받아서 회원가입을 진행한다.")
     public ResponseEntity<Void> create(
             @AuthenticationPrincipal CustomMemberDetails member,
-            @ModelAttribute MemberCreateRequest request
+            @RequestPart MemberCreateRequestWithoutImage request,
+            @RequestPart(required = false) MultipartFile file
     ) {
-        Long memberId = loginService.signUp(member, request);
+
+        MemberCreateRequest memberCreateRequest = MemberCreateRequest.of(request, file);
+        Long memberId = loginService.signUp(member, memberCreateRequest);
 
         return ResponseEntity.created(URI.create("/members/" + memberId))
                 .build();
