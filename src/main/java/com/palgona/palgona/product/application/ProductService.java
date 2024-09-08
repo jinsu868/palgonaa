@@ -26,7 +26,6 @@ import com.palgona.palgona.product.domain.ProductImageRepository;
 import com.palgona.palgona.product.domain.ProductRepository;
 import com.palgona.palgona.product.event.ImageUploadEvent;
 import com.palgona.palgona.product.infrastructure.querydto.ProductDetailQueryResponse;
-import com.palgona.palgona.image.domain.S3Client;
 import java.util.ArrayList;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -50,7 +49,6 @@ public class ProductService {
     private final ProductRepository productRepository;
     private final ImageRepository imageRepository;
     private final BookmarkRepository bookmarkRepository;
-
     private final ProductImageRepository productImageRepository;
     private final BiddingRepository biddingRepository;
     private final S3Service s3Service;
@@ -58,9 +56,7 @@ public class ProductService {
     private final ApplicationEventPublisher publisher;
 
     @Transactional
-    public void createProduct(ProductCreateRequest request, List<MultipartFile> imageFiles, CustomMemberDetails memberDetails) {
-
-        Member member = memberDetails.getMember();
+    public void createProduct(ProductCreateRequest request, Member member) {
 
         //1. 상품 정보 유효성 확인
         checkProduct(request.initialPrice(), request.category(), request.deadline());
@@ -78,9 +74,12 @@ public class ProductService {
 
         productRepository.save(product);
 
-        for (MultipartFile imageFile : imageFiles) {
-            //이미지 저장
-            String imageUrl = s3Service.upload(imageFile, "qwe");
+        List<ImageUploadRequest> uploadRequests = new ArrayList<>();
+
+        for (MultipartFile imageFile : request.files()) {
+            String uploadFileName = FileUtils.createFileName(imageFile.getOriginalFilename());
+            String imageUrl = s3Service.generateS3FileUrl(uploadFileName);
+            uploadRequests.add(new ImageUploadRequest(imageFile, uploadFileName));
 
             Image image = Image.builder()
                     .imageUrl(imageUrl)
@@ -96,6 +95,8 @@ public class ProductService {
 
             productImageRepository.save(productImage);
         }
+
+        publisher.publishEvent(new ImageUploadEvent(uploadRequests));
     }
 
 

@@ -5,6 +5,7 @@ import com.palgona.palgona.common.dto.response.SliceResponse;
 import com.palgona.palgona.product.domain.Category;
 import com.palgona.palgona.product.domain.SortType;
 import com.palgona.palgona.product.dto.request.ProductCreateRequest;
+import com.palgona.palgona.product.dto.request.ProductCreateRequestWithoutImage;
 import com.palgona.palgona.product.dto.response.ProductDetailResponse;
 import com.palgona.palgona.product.dto.request.ProductUpdateRequestWithoutImage;
 import com.palgona.palgona.product.dto.response.ProductPageResponse;
@@ -26,14 +27,16 @@ public class ProductController {
 
     private final ProductService productService;
 
-    @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @PostMapping(consumes = {MediaType.APPLICATION_JSON_VALUE, MediaType.MULTIPART_FORM_DATA_VALUE})
     @Operation(summary = "상품 등록 api", description = "상품 정보와 상품 사진들을 받아서 상품 등록을 진행한다.")
     public ResponseEntity<Void> createProduct(
-            @ModelAttribute ProductCreateRequest request,
-            @AuthenticationPrincipal CustomMemberDetails member
+            @RequestPart List<MultipartFile> files,
+            @RequestPart ProductCreateRequestWithoutImage request,
+            @AuthenticationPrincipal CustomMemberDetails loginMember
     ){
 
-        productService.createProduct(request, request.files(), member);
+        ProductCreateRequest productCreateRequest = ProductCreateRequest.of(request, files);
+        productService.createProduct(productCreateRequest, loginMember.getMember());
 
         return ResponseEntity.ok()
                 .build();
