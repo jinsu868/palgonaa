@@ -5,23 +5,29 @@ import static com.palgona.palgona.common.error.code.MemberErrorCode.*;
 import com.palgona.palgona.common.dto.CustomMemberDetails;
 import com.palgona.palgona.common.dto.response.SliceResponse;
 import com.palgona.palgona.common.error.exception.BusinessException;
+import com.palgona.palgona.image.application.S3Service;
+import com.palgona.palgona.image.dto.ImageUploadRequest;
+import com.palgona.palgona.image.util.FileUtils;
 import com.palgona.palgona.member.domain.Member;
 import com.palgona.palgona.member.dto.response.MemberDetailResponse;
 import com.palgona.palgona.member.dto.response.MemberResponse;
 import com.palgona.palgona.member.dto.request.MemberUpdateRequest;
 import com.palgona.palgona.member.domain.MemberRepository;
-import com.palgona.palgona.image.domain.S3Client;
+import com.palgona.palgona.product.event.ImageUploadEvent;
+import java.util.ArrayList;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
-@Transactional(readOnly = true)
 @RequiredArgsConstructor
 public class MemberService {
 
     private final MemberRepository memberRepository;
-    private final S3Client s3Client;
+    private final S3Service s3Service;
+    private final ApplicationEventPublisher publisher;
 
     public MemberDetailResponse findMyProfile(CustomMemberDetails loginMember) {
         Member member = loginMember.getMember();
@@ -40,7 +46,6 @@ public class MemberService {
         return memberRepository.findAllOrderByIdDesc(cursor);
     }
 
-    // TODO: 이미지 업로드 수정
     @Transactional
     public void update(
             CustomMemberDetails loginMember,
@@ -51,10 +56,14 @@ public class MemberService {
         Member member = memberRepository.findBySocialId(socialId)
                 .orElseThrow(() -> new BusinessException(MEMBER_NOT_FOUND));
 
-        s3Client.deleteFile(member.getProfileImage());
-        String imageUrl = s3Client.upload(memberUpdateRequest.image(), "QWER");
+        List<ImageUploadRequest> uploadRequests = new ArrayList<>();
+        String uploadFileName = FileUtils.createFileName(memberUpdateRequest.image().getOriginalFilename());
+        String imageUrl = s3Service.generateS3FileUrl(uploadFileName);
+        uploadRequests.add(ImageUploadRequest.of(memberUpdateRequest.image(), uploadFileName));
 
         member.updateNickName(memberUpdateRequest.nickName());
         member.updateProfileImage(imageUrl);
+
+        publisher.publishEvent(ImageUploadEvent.from(uploadRequests));
     }
 }
