@@ -20,9 +20,11 @@ public class Image extends BaseTimeEntity{
     @Column(nullable = false)
     private String imageUrl;
 
-    @Builder
     public Image(String imageUrl){
         this.imageUrl = imageUrl;
     }
 
+    public static Image from(String imageUrl) {
+        return new Image(imageUrl);
+    }
 }
