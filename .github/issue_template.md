@@ -1,8 +1,4 @@
-## Description
+## Describe
 
-- 설명을 적어주세요.
 
-## Todo
-
-- [ ] todo
-- [ ] todo
+## Conclusion
