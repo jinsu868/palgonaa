@@ -8,9 +8,6 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 @Entity
-@Table(name = "product_image", uniqueConstraints = {
-        @UniqueConstraint(columnNames = {"product_id", "image_id"})
-})
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @Getter
 public class ProductImage {
@@ -22,13 +19,16 @@ public class ProductImage {
     @JoinColumn(name = "product_id", nullable = false)
     private Product product;
 
-    @OneToOne(fetch = FetchType.LAZY)
+    @OneToOne(fetch = FetchType.LAZY, cascade = CascadeType.ALL, orphanRemoval = true)
     @JoinColumn(name = "image_id", nullable = false)
     private Image image;
 
-    @Builder
     public ProductImage(Product product, Image image){
         this.product = product;
         this.image = image;
+    }
+
+    public static ProductImage of(Product product, Image image) {
+        return new ProductImage(product, image);
     }
 }

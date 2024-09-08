@@ -47,7 +47,7 @@ public class Product extends BaseTimeEntity {
     @JoinColumn(name = "member_id", nullable = false)
     private Member member;
 
-    @OneToMany(mappedBy = "product")
+    @OneToMany(mappedBy = "product", cascade = CascadeType.ALL)
     private List<ProductImage> productImages = new ArrayList<>();
 
     public static Product of(
@@ -120,6 +120,12 @@ public class Product extends BaseTimeEntity {
 
     public boolean isOwner(Member member){
         return this.member.getId() == member.getId();
+    }
+
+    public void addProductImages(List<ProductImage> productImages) {
+        for (ProductImage productImage : productImages) {
+            addProductImage(productImage);
+        }
     }
 
     public void addProductImage(ProductImage productImage) {
