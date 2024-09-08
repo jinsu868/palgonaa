@@ -7,10 +7,10 @@ import com.palgona.palgona.product.domain.SortType;
 import com.palgona.palgona.product.dto.request.ProductCreateRequest;
 import com.palgona.palgona.product.dto.request.ProductCreateRequestWithoutImage;
 import com.palgona.palgona.product.dto.response.ProductDetailResponse;
-import com.palgona.palgona.product.dto.request.ProductUpdateRequestWithoutImage;
 import com.palgona.palgona.product.dto.response.ProductPageResponse;
 import com.palgona.palgona.product.application.ProductService;
 import io.swagger.v3.oas.annotations.Operation;
+import java.net.URI;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.MediaType;
@@ -36,16 +36,20 @@ public class ProductController {
     ){
 
         ProductCreateRequest productCreateRequest = ProductCreateRequest.of(request, files);
-        productService.createProduct(productCreateRequest, loginMember.getMember());
+        Long productId = productService.createProduct(productCreateRequest, loginMember.getMember());
 
-        return ResponseEntity.ok()
+        return ResponseEntity.created(URI.create("/api/v1/products/" + productId))
                 .build();
     }
 
-    @GetMapping("/{productId}")
+    @GetMapping("/{id}")
     @Operation(summary = "상품 상세 조회 api", description = "상품 id를 받아 상품 상세 정보를 보여준다.")
-    public ResponseEntity<ProductDetailResponse> readProduct(@PathVariable Long productId, @AuthenticationPrincipal CustomMemberDetails member){
-        ProductDetailResponse productDetailResponse = productService.readProduct(productId, member);
+    public ResponseEntity<ProductDetailResponse> readProduct(
+            @PathVariable Long id,
+            @AuthenticationPrincipal CustomMemberDetails member
+    ){
+
+        ProductDetailResponse productDetailResponse = productService.readProduct(id, member);
 
         return ResponseEntity.ok()
                 .body(productDetailResponse);
@@ -61,40 +65,51 @@ public class ProductController {
     ) {
 
         SliceResponse<ProductPageResponse> response = productService.readProducts(
-                sortType, category, searchWord, cursor, pageSize);
+                sortType,
+                category,
+                searchWord,
+                cursor,
+                pageSize
+        );
 
         return ResponseEntity.ok(response);
     }
 
-    @DeleteMapping("/{productId}")
+    @DeleteMapping("/{id}")
     @Operation(summary = "상품 삭제 api", description = "상품 id를 받아 해당 상품 삭제 처리를 진행한다. ")
-    public ResponseEntity<Void> deleteProduct(@PathVariable Long productId, @AuthenticationPrincipal CustomMemberDetails member){
+    public ResponseEntity<Void> deleteProduct(
+            @PathVariable Long id,
+            @AuthenticationPrincipal CustomMemberDetails loginMember
+    ) {
 
-        productService.deleteProduct(productId, member);
+        productService.deleteProduct(id, loginMember.getMember());
 
         return ResponseEntity.ok().build();
     }
 
     @PostMapping(
-            value = "/{productId}",
+            value = "/{id}",
             consumes = {MediaType.APPLICATION_JSON_VALUE, MediaType.MULTIPART_FORM_DATA_VALUE})
     public ResponseEntity<Void> addImage(
             @AuthenticationPrincipal CustomMemberDetails member,
-            @PathVariable Long productId,
+            @PathVariable Long id,
             @RequestPart MultipartFile file
     ) {
 
-        productService.addImage(member.getMember(), productId, file);
+        productService.addImage(member.getMember(), id, file);
 
         return ResponseEntity.ok()
-                .header("Location", "/api/v1/products/" + productId)
+                .header("Location", "/api/v1/products/" + id)
                 .build();
     }
 
 
     @PostMapping("/{productId}/Notifications")
     @Operation(summary = "상품 알림 무시 api", description = "상품 id를 받아 해당 상품에 대한 알림 무시를 활성화한다.")
-    public ResponseEntity<Void> turnOffProductNotification(@PathVariable Long productId, @AuthenticationPrincipal CustomMemberDetails member){
+    public ResponseEntity<Void> turnOffProductNotification(
+            @PathVariable Long productId,
+            @AuthenticationPrincipal CustomMemberDetails member
+    ){
 
         productService.turnOffProductNotification(productId, member);
 
@@ -103,7 +118,10 @@ public class ProductController {
 
     @DeleteMapping("/{productId}/Notifications")
     @Operation(summary = "상품 알림 활성화 api", description = "상품 id를 받아 해당 상품에 대한 알림을 다시 활성화한다.")
-    public ResponseEntity<Void> turnOnProductNotification(@PathVariable Long productId, @AuthenticationPrincipal CustomMemberDetails member){
+    public ResponseEntity<Void> turnOnProductNotification(
+            @PathVariable Long productId,
+            @AuthenticationPrincipal CustomMemberDetails member
+    ){
 
         productService.turnOnProductNotification(productId, member);
 

@@ -1,6 +1,11 @@
 package com.palgona.palgona.product.domain;
 
+import static com.palgona.palgona.common.error.code.ProductErrorCode.INVALID_CATEGORY;
+import static com.palgona.palgona.common.error.code.ProductErrorCode.INVALID_DEADLINE;
+import static com.palgona.palgona.common.error.code.ProductErrorCode.INVALID_PRICE;
+
 import com.palgona.palgona.common.entity.BaseTimeEntity;
+import com.palgona.palgona.common.error.exception.BusinessException;
 import com.palgona.palgona.member.domain.Member;
 import jakarta.persistence.*;
 
@@ -8,7 +13,6 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import lombok.AccessLevel;
-import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
@@ -43,11 +47,54 @@ public class Product extends BaseTimeEntity {
     @JoinColumn(name = "member_id", nullable = false)
     private Member member;
 
-    @OneToMany(mappedBy = "product")
+    @OneToMany(mappedBy = "product", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<ProductImage> productImages = new ArrayList<>();
 
-    @Builder
-    public Product(
+    public static Product of(
+            String name,
+            Integer initialPrice,
+            String content,
+            String category,
+            LocalDateTime deadline,
+            ProductState productState,
+            Member member
+    ) {
+        validateInitialPrice(initialPrice);
+        validateCategory(category);
+        validateDeadline(deadline);
+
+        return new Product(
+                name,
+                initialPrice,
+                content,
+                Category.valueOf(category),
+                deadline,
+                productState,
+                member
+        );
+    }
+
+    private static void validateInitialPrice(Integer initialPrice) {
+        if (initialPrice < 0) {
+            throw new BusinessException(INVALID_PRICE);
+        }
+    }
+
+    private static void validateCategory(String category) {
+        try {
+            Category.valueOf(category);
+        } catch (Exception e) {
+            throw new BusinessException(INVALID_CATEGORY);
+        }
+    }
+
+    private static void validateDeadline(LocalDateTime deadline) {
+        if(deadline.isBefore(LocalDateTime.now().plusDays(1))){
+            throw new BusinessException(INVALID_DEADLINE);
+        }
+    }
+
+    private Product(
             String name,
             Integer initialPrice,
             String content,
@@ -64,26 +111,6 @@ public class Product extends BaseTimeEntity {
         this.member = member;
     }
 
-    public void updateName(String name) {
-        this.name = name;
-    }
-
-    public void updateInitialPrice(Integer initialPrice) {
-        this.initialPrice = initialPrice;
-    }
-
-    public void updateContent(String content) {
-        this.content = content;
-    }
-
-    public void updateCategory(Category category) {
-        this.category = category;
-    }
-
-    public void updateDeadline(LocalDateTime deadline) {
-        this.deadline = deadline;
-    }
-
     public void updateProductState(ProductState productState) {this.productState = productState;}
 
     public boolean isDeadlineReached() {
@@ -93,6 +120,12 @@ public class Product extends BaseTimeEntity {
 
     public boolean isOwner(Member member){
         return this.member.getId() == member.getId();
+    }
+
+    public void addProductImages(List<ProductImage> productImages) {
+        for (ProductImage productImage : productImages) {
+            addProductImage(productImage);
+        }
     }
 
     public void addProductImage(ProductImage productImage) {

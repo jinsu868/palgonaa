@@ -4,7 +4,6 @@ package com.palgona.palgona.image.domain;
 import com.palgona.palgona.common.entity.BaseTimeEntity;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
-import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
@@ -20,9 +19,11 @@ public class Image extends BaseTimeEntity{
     @Column(nullable = false)
     private String imageUrl;
 
-    @Builder
     public Image(String imageUrl){
         this.imageUrl = imageUrl;
     }
 
+    public static Image from(String imageUrl) {
+        return new Image(imageUrl);
+    }
 }

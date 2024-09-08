@@ -21,7 +21,6 @@ import com.palgona.palgona.product.dto.response.ProductDetailResponse;
 import com.palgona.palgona.product.dto.response.ProductPageResponse;
 import com.palgona.palgona.bidding.domain.BiddingRepository;
 import com.palgona.palgona.image.domain.ImageRepository;
-import com.palgona.palgona.product.domain.ProductImageRepository;
 import com.palgona.palgona.product.domain.ProductRepository;
 import com.palgona.palgona.product.event.ImageUploadEvent;
 import com.palgona.palgona.product.infrastructure.querydto.ProductDetailQueryResponse;
@@ -33,7 +32,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.time.LocalDateTime;
 import java.util.List;
 
 import static com.palgona.palgona.common.error.code.ProductErrorCode.*;
@@ -48,54 +46,40 @@ public class ProductService {
     private final ProductRepository productRepository;
     private final ImageRepository imageRepository;
     private final BookmarkRepository bookmarkRepository;
-    private final ProductImageRepository productImageRepository;
     private final BiddingRepository biddingRepository;
     private final S3Service s3Service;
     private final SilentNotificationsRepository silentNotificationsRepository;
     private final ApplicationEventPublisher publisher;
 
     @Transactional
-    public void createProduct(ProductCreateRequest request, Member member) {
+    public Long createProduct(ProductCreateRequest request, Member member) {
 
-        //1. 상품 정보 유효성 확인
-        checkProduct(request.initialPrice(), request.category(), request.deadline());
-
-        //상품 저장
-        Product product = Product.builder()
-                .name(request.name())
-                .initialPrice(request.initialPrice())
-                .content(request.content())
-                .category(Category.valueOf(request.category()))
-                .productState(ProductState.ON_SALE)
-                .deadline(request.deadline())
-                .member(member)
-                .build();
-
-        productRepository.save(product);
+        Product product = Product.of(
+                request.name(),
+                request.initialPrice(),
+                request.content(),
+                request.category(),
+                request.deadline(),
+                ProductState.ON_SALE,
+                member
+        );
 
         List<ImageUploadRequest> uploadRequests = new ArrayList<>();
+        List<ProductImage> productImages = new ArrayList<>();
 
         for (MultipartFile imageFile : request.files()) {
             String uploadFileName = FileUtils.createFileName(imageFile.getOriginalFilename());
             String imageUrl = s3Service.generateS3FileUrl(uploadFileName);
             uploadRequests.add(new ImageUploadRequest(imageFile, uploadFileName));
-
-            Image image = Image.builder()
-                    .imageUrl(imageUrl)
-                    .build();
-
-            imageRepository.save(image);
-
-            //상품 이미지 연관관계 저장
-            ProductImage productImage = ProductImage.builder()
-                    .product(product)
-                    .image(image)
-                    .build();
-
-            productImageRepository.save(productImage);
+            Image image = Image.from(imageUrl);
+            productImages.add(ProductImage.of(product, image));
         }
 
+        product.addProductImages(productImages);
+
+        productRepository.save(product);
         publisher.publishEvent(new ImageUploadEvent(uploadRequests));
+        return product.getId();
     }
 
     public ProductDetailResponse readProduct(Long productId, CustomMemberDetails memberDetail){
@@ -133,36 +117,16 @@ public class ProductService {
     }
 
     @Transactional
-    public void deleteProduct(Long productId, CustomMemberDetails memberDetails){
+    public void deleteProduct(Long productId, Member member) {
 
-        Member member = memberDetails.getMember();
+        Product product = findProduct(productId);
 
-        Product product = productRepository.findById(productId)
-                .orElseThrow(() -> new BusinessException(NOT_FOUND));
+        validateProductPermission(member, product);
+        validateProductDelete(product);
 
-
-        //1. 상품에 대한 권한 확인
-        checkPermission(member, product);
-
-        //2. 입찰 내역에 있는 상품인지 확인
-        checkRelatedBidding(product);
-
-        //Todo: 3. 구매 내역에 있는 상품인지 체크
-
-        //4. 상품과 관련된 이미지 및 이미지 연관관계 삭제 (soft delete면 아래 로직 수행 x)
-//        List<ProductImage> productImages = productImageRepository.findByProduct(product);
-//        for (ProductImage productImage : productImages) {
-//            Image image = productImage.getImage();
-//            s3Service.deleteFile(image.getImageUrl());
-//            productImageRepository.delete(productImage);
-//            imageRepository.delete(image);
-//        }
-
-        //4. 상품과 관련된 정보들 삭제
-        //4-1. 상품 찜 정보 삭제
         bookmarkRepository.deleteByProduct(product);
 
-        //5. 상품의 상태를 DELETED로 업데이트 (soft delete)
+        // TODO: history 테이블로 이전시키기
         product.updateProductState(ProductState.DELETED);
     }
 
@@ -205,66 +169,35 @@ public class ProductService {
 
     @Transactional
     public void addImage(Member member, Long productId, MultipartFile file) {
-        Product product = productRepository.findById(productId)
-                .orElseThrow(() -> new BusinessException(NOT_FOUND));
 
-        if (!product.isOwner(member)) {
-            throw new BusinessException(INSUFFICIENT_PERMISSION);
-        }
+        Product product = findProduct(productId);
+
+        validateProductPermission(member, product);
 
         String uploadFileName = FileUtils.createFileName(file.getOriginalFilename());
         String imageUrl = s3Service.generateS3FileUrl(uploadFileName);
 
-        Image image = Image.builder()
-                .imageUrl(imageUrl)
-                .build();
+        Image image = Image.from(imageUrl);
+        ProductImage productImage = ProductImage.of(product, image);
+        product.addProductImage(productImage);
 
-        imageRepository.save(image);
-
-        ProductImage productImage = ProductImage.builder()
-                .product(product)
-                .image(image)
-                .build();
-
-        productImageRepository.save(productImage);
         publisher.publishEvent(ImageUploadEvent.from(List.of(ImageUploadRequest.of(file, uploadFileName))));
     }
 
-    private void checkRelatedBidding(Product product){
+    private void validateProductDelete(Product product){
         if (biddingRepository.existsByProduct(product)) {
             throw new BusinessException(RELATED_BIDDING_EXISTS);
         }
     }
 
-    private void checkPermission(Member member, Product product) {
+    private void validateProductPermission(Member member, Product product) {
         if (!(product.isOwner(member) || member.isAdmin())) {
             throw new BusinessException(INSUFFICIENT_PERMISSION);
         }
     }
 
-    private void checkProduct(int price, String category, LocalDateTime deadline){
-        //1. 상품 가격이 마이너스인 경우 처리
-        if(price < 0){
-            throw new BusinessException(INVALID_PRICE);
-        }
-
-        //2. 상품 카테고리가 없는 경우
-        try {
-            Category.valueOf(category);
-        } catch (Exception e) {
-            throw new BusinessException(INVALID_CATEGORY);
-        }
-
-
-        //3. 상품 판매 기간이 하루 미만일 경우
-        if(deadline.isBefore(LocalDateTime.now().plusDays(1))){
-            throw new BusinessException(INVALID_DEADLINE);
-        }
-    }
-
-    private List<Long> toImageIds(List<Image> images) {
-        return images.stream()
-                .map(image -> image.getImageId())
-                .toList();
+    private Product findProduct(Long productId) {
+        return productRepository.findById(productId)
+                .orElseThrow(() -> new BusinessException(NOT_FOUND));
     }
 }
