@@ -18,7 +18,6 @@ import com.palgona.palgona.product.domain.ProductState;
 import com.palgona.palgona.product.domain.SortType;
 import com.palgona.palgona.product.dto.request.ProductCreateRequest;
 import com.palgona.palgona.product.dto.response.ProductDetailResponse;
-import com.palgona.palgona.product.dto.request.ProductUpdateRequestWithoutImage;
 import com.palgona.palgona.product.dto.response.ProductPageResponse;
 import com.palgona.palgona.bidding.domain.BiddingRepository;
 import com.palgona.palgona.image.domain.ImageRepository;
@@ -99,7 +98,6 @@ public class ProductService {
         publisher.publishEvent(new ImageUploadEvent(uploadRequests));
     }
 
-
     public ProductDetailResponse readProduct(Long productId, CustomMemberDetails memberDetail){
         Member member = memberDetail.getMember();
 
@@ -168,69 +166,6 @@ public class ProductService {
         product.updateProductState(ProductState.DELETED);
     }
 
-    @Transactional
-    public void updateProduct(
-            Long id,
-            ProductUpdateRequestWithoutImage request,
-            List<MultipartFile> imageFiles,
-            Member member
-    ){
-
-        Product product = productRepository.findById(id)
-                .orElseThrow(() -> new BusinessException(NOT_FOUND));
-
-        //0. 상품 유효성 확인
-        checkProduct(request.initialPrice(), request.category(), request.deadline());
-
-        //1. 상품에 대한 권한 확인
-        checkPermission(member, product);
-
-        //2. 입찰 내역에 있는 상품인지 확인
-        checkRelatedBidding(product);
-
-        //Todo: 3. 구매 내역에 있는 상품인지 체크
-
-        List<String> deletedImageUrls = request.deletedImageUrls();
-
-        List<Image> images = imageRepository.findImageByImageUrls(deletedImageUrls);
-        List<Long> imageIds = toImageIds(images);
-        productImageRepository.deleteByImageIds(images);
-        imageRepository.deleteByIds(imageIds);
-
-        List<ImageUploadRequest> uploadRequests = new ArrayList<>();
-
-        //4-2. 새로 추가된 상품 이미지 저장
-        for (MultipartFile imageFile : imageFiles) {
-            //이미지 저장
-            String uploadFileName = FileUtils.createFileName(imageFile.getOriginalFilename());
-            String imageUrl = s3Service.generateS3FileUrl(uploadFileName);
-            uploadRequests.add(new ImageUploadRequest(imageFile, uploadFileName));
-
-            Image image = Image.builder()
-                    .imageUrl(imageUrl)
-                    .build();
-
-            imageRepository.save(image);
-
-            //상품 이미지 연관관계 저장
-            ProductImage productImage = ProductImage.builder()
-                    .product(product)
-                    .image(image)
-                    .build();
-
-            productImageRepository.save(productImage);
-        }
-
-        //5. 상품 정보 수정
-        product.updateName(request.name());
-        product.updateInitialPrice(request.initialPrice());
-        product.updateContent(request.content());
-        product.updateCategory(Category.valueOf(request.category()));
-        product.updateDeadline(request.deadline());
-
-        publisher.publishEvent(new ImageUploadEvent(uploadRequests));
-    }
-
     public void turnOffProductNotification(Long productId, CustomMemberDetails memberDetails){
         Member member = memberDetails.getMember();
 
@@ -292,7 +227,7 @@ public class ProductService {
                 .build();
 
         productImageRepository.save(productImage);
-        publisher.publishEvent(new ImageUploadEvent(List.of(new ImageUploadRequest(file, uploadFileName))));
+        publisher.publishEvent(ImageUploadEvent.from(List.of(ImageUploadRequest.of(file, uploadFileName))));
     }
 
     private void checkRelatedBidding(Product product){
