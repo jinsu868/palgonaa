@@ -3,7 +3,6 @@ package com.palgona.palgona.product.domain;
 import com.palgona.palgona.image.domain.Image;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
-import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 

@@ -1,10 +1,5 @@
 package com.palgona.palgona.product.domain;
 
-
-import static com.palgona.palgona.common.error.code.ProductErrorCode.INVALID_CATEGORY;
-
-import com.palgona.palgona.common.error.exception.BusinessException;
-import java.util.Arrays;
 import lombok.Getter;
 
 @Getter
