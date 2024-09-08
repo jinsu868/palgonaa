@@ -7,7 +7,6 @@ import com.palgona.palgona.product.domain.SortType;
 import com.palgona.palgona.product.dto.request.ProductCreateRequest;
 import com.palgona.palgona.product.dto.request.ProductCreateRequestWithoutImage;
 import com.palgona.palgona.product.dto.response.ProductDetailResponse;
-import com.palgona.palgona.product.dto.request.ProductUpdateRequestWithoutImage;
 import com.palgona.palgona.product.dto.response.ProductPageResponse;
 import com.palgona.palgona.product.application.ProductService;
 import io.swagger.v3.oas.annotations.Operation;

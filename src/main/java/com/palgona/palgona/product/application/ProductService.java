@@ -21,7 +21,6 @@ import com.palgona.palgona.product.dto.response.ProductDetailResponse;
 import com.palgona.palgona.product.dto.response.ProductPageResponse;
 import com.palgona.palgona.bidding.domain.BiddingRepository;
 import com.palgona.palgona.image.domain.ImageRepository;
-import com.palgona.palgona.product.domain.ProductImageRepository;
 import com.palgona.palgona.product.domain.ProductRepository;
 import com.palgona.palgona.product.event.ImageUploadEvent;
 import com.palgona.palgona.product.infrastructure.querydto.ProductDetailQueryResponse;
@@ -47,7 +46,6 @@ public class ProductService {
     private final ProductRepository productRepository;
     private final ImageRepository imageRepository;
     private final BookmarkRepository bookmarkRepository;
-    private final ProductImageRepository productImageRepository;
     private final BiddingRepository biddingRepository;
     private final S3Service s3Service;
     private final SilentNotificationsRepository silentNotificationsRepository;
@@ -55,6 +53,7 @@ public class ProductService {
 
     @Transactional
     public void createProduct(ProductCreateRequest request, Member member) {
+
         Product product = Product.of(
                 request.name(),
                 request.initialPrice(),
@@ -65,30 +64,20 @@ public class ProductService {
                 member
         );
 
-        productRepository.save(product);
-
         List<ImageUploadRequest> uploadRequests = new ArrayList<>();
+        List<ProductImage> productImages = new ArrayList<>();
 
         for (MultipartFile imageFile : request.files()) {
             String uploadFileName = FileUtils.createFileName(imageFile.getOriginalFilename());
             String imageUrl = s3Service.generateS3FileUrl(uploadFileName);
             uploadRequests.add(new ImageUploadRequest(imageFile, uploadFileName));
-
-            Image image = Image.builder()
-                    .imageUrl(imageUrl)
-                    .build();
-
-            imageRepository.save(image);
-
-            //상품 이미지 연관관계 저장
-            ProductImage productImage = ProductImage.builder()
-                    .product(product)
-                    .image(image)
-                    .build();
-
-            productImageRepository.save(productImage);
+            Image image = Image.from(imageUrl);
+            productImages.add(ProductImage.of(product, image));
         }
 
+        product.addProductImages(productImages);
+
+        productRepository.save(product);
         publisher.publishEvent(new ImageUploadEvent(uploadRequests));
     }
 
@@ -209,18 +198,10 @@ public class ProductService {
         String uploadFileName = FileUtils.createFileName(file.getOriginalFilename());
         String imageUrl = s3Service.generateS3FileUrl(uploadFileName);
 
-        Image image = Image.builder()
-                .imageUrl(imageUrl)
-                .build();
+        Image image = Image.from(imageUrl);
+        ProductImage productImage = ProductImage.of(product, image);
+        product.addProductImage(productImage);
 
-        imageRepository.save(image);
-
-        ProductImage productImage = ProductImage.builder()
-                .product(product)
-                .image(image)
-                .build();
-
-        productImageRepository.save(productImage);
         publisher.publishEvent(ImageUploadEvent.from(List.of(ImageUploadRequest.of(file, uploadFileName))));
     }
 
