@@ -52,7 +52,7 @@ public class ProductService {
     private final ApplicationEventPublisher publisher;
 
     @Transactional
-    public void createProduct(ProductCreateRequest request, Member member) {
+    public Long createProduct(ProductCreateRequest request, Member member) {
 
         Product product = Product.of(
                 request.name(),
@@ -79,6 +79,7 @@ public class ProductService {
 
         productRepository.save(product);
         publisher.publishEvent(new ImageUploadEvent(uploadRequests));
+        return product.getId();
     }
 
     public ProductDetailResponse readProduct(Long productId, CustomMemberDetails memberDetail){
@@ -168,12 +169,10 @@ public class ProductService {
 
     @Transactional
     public void addImage(Member member, Long productId, MultipartFile file) {
-        Product product = productRepository.findById(productId)
-                .orElseThrow(() -> new BusinessException(NOT_FOUND));
 
-        if (!product.isOwner(member)) {
-            throw new BusinessException(INSUFFICIENT_PERMISSION);
-        }
+        Product product = findProduct(productId);
+
+        validateProductPermission(member, product);
 
         String uploadFileName = FileUtils.createFileName(file.getOriginalFilename());
         String imageUrl = s3Service.generateS3FileUrl(uploadFileName);
@@ -195,12 +194,6 @@ public class ProductService {
         if (!(product.isOwner(member) || member.isAdmin())) {
             throw new BusinessException(INSUFFICIENT_PERMISSION);
         }
-    }
-
-    private List<Long> toImageIds(List<Image> images) {
-        return images.stream()
-                .map(image -> image.getImageId())
-                .toList();
     }
 
     private Product findProduct(Long productId) {
