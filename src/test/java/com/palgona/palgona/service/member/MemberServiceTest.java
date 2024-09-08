@@ -13,7 +13,7 @@ import com.palgona.palgona.member.domain.Status;
 import com.palgona.palgona.member.dto.request.MemberUpdateRequest;
 import com.palgona.palgona.member.domain.MemberRepository;
 import com.palgona.palgona.member.application.MemberService;
-import com.palgona.palgona.image.application.S3Service;
+import com.palgona.palgona.image.domain.S3Client;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -29,7 +29,7 @@ public class MemberServiceTest {
     MemberRepository memberRepository;
 
     @Mock
-    S3Service s3Service;
+    S3Client s3Client;
 
     @InjectMocks
     MemberService memberService;
@@ -49,8 +49,8 @@ public class MemberServiceTest {
         Member target = Member.of(100, Status.ACTIVE, "111", Role.USER);
 
         given(memberRepository.findBySocialId(any())).willReturn(Optional.of(target));
-        doNothing().when(s3Service).deleteFile(any());
-        given(s3Service.upload(any())).willReturn("123.png");
+        doNothing().when(s3Client).deleteFile(any());
+        given(s3Client.upload(any())).willReturn("123.png");
 
         memberService.update(customMemberDetails, request);
         assertThat(target.getNickName()).isEqualTo("palgona");

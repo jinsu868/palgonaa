@@ -1,4 +1,4 @@
-package com.palgona.palgona.image.application;
+package com.palgona.palgona.image.util;
 
 import java.util.Arrays;
 import lombok.Getter;

@@ -17,7 +17,7 @@ import com.palgona.palgona.auth.dto.response.KakaoUserInfoResponse;
 import com.palgona.palgona.auth.dto.response.LoginResponse;
 import com.palgona.palgona.member.dto.request.MemberCreateRequest;
 import com.palgona.palgona.member.domain.MemberRepository;
-import com.palgona.palgona.image.application.S3Service;
+import com.palgona.palgona.image.domain.S3Client;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -47,7 +47,7 @@ public class LoginService {
     private Long accessExpirationTime;
 
     private final MemberRepository memberRepository;
-    private final S3Service s3Service;
+    private final S3Client s3Client;
     private final RestTemplate restTemplate;
     private final RedisUtils redisUtils;
 
@@ -158,9 +158,11 @@ public class LoginService {
                 () -> new BusinessException(MEMBER_NOT_FOUND));
     }
 
+
+    //TODO: 이미지 업로드 수정
     private String uploadImage(MultipartFile image) {
         if (image != null) {
-            return s3Service.upload(image);
+            return s3Client.upload(image, "QWER");
         }
         return defaultImage;
     }

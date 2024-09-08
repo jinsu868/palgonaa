@@ -29,7 +29,7 @@ import com.palgona.palgona.chat.domain.ChatReadStatusRepository;
 import com.palgona.palgona.chat.domain.ChatRoomRepository;
 import com.palgona.palgona.member.domain.MemberRepository;
 import com.palgona.palgona.chat.application.ChatService;
-import com.palgona.palgona.image.application.S3Service;
+import com.palgona.palgona.image.domain.S3Client;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -59,7 +59,7 @@ class ChatServiceTest {
     private ChatService chatService;
 
     @Mock
-    private S3Service s3Service;
+    private S3Client s3Client;
 
 
     @BeforeEach
@@ -332,7 +332,7 @@ class ChatServiceTest {
         given(memberRepository.findById(1L)).willReturn(Optional.of(sender));
         given(memberRepository.findById(2L)).willReturn(Optional.of(receiver));
         given(chatRoomRepository.findById(3L)).willReturn(Optional.of(room));
-        given(s3Service.upload(file)).willReturn(fileUrl);
+        given(s3Client.upload(file)).willReturn(fileUrl);
         given(chatMessageRepository.save(any(ChatMessage.class))).willReturn(message);
 
         // when

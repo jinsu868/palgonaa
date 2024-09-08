@@ -5,7 +5,10 @@ import com.palgona.palgona.common.dto.CustomMemberDetails;
 import com.palgona.palgona.common.dto.response.SliceResponse;
 import com.palgona.palgona.common.error.exception.BusinessException;
 import com.palgona.palgona.fcm.domain.SilentNotifications;
+import com.palgona.palgona.image.application.S3Service;
 import com.palgona.palgona.image.domain.Image;
+import com.palgona.palgona.image.dto.ImageUploadRequest;
+import com.palgona.palgona.image.util.FileUtils;
 import com.palgona.palgona.member.domain.Member;
 import com.palgona.palgona.notification.domain.SilentNotificationsRepository;
 import com.palgona.palgona.product.domain.Category;
@@ -15,16 +18,18 @@ import com.palgona.palgona.product.domain.ProductState;
 import com.palgona.palgona.product.domain.SortType;
 import com.palgona.palgona.product.dto.request.ProductCreateRequest;
 import com.palgona.palgona.product.dto.response.ProductDetailResponse;
-import com.palgona.palgona.product.dto.request.ProductUpdateRequest;
+import com.palgona.palgona.product.dto.request.ProductUpdateRequestWithoutImage;
 import com.palgona.palgona.product.dto.response.ProductPageResponse;
 import com.palgona.palgona.bidding.domain.BiddingRepository;
 import com.palgona.palgona.image.domain.ImageRepository;
 import com.palgona.palgona.product.domain.ProductImageRepository;
 import com.palgona.palgona.product.domain.ProductRepository;
+import com.palgona.palgona.product.event.ImageUploadEvent;
 import com.palgona.palgona.product.infrastructure.querydto.ProductDetailQueryResponse;
-import com.palgona.palgona.image.application.S3Service;
+import java.util.ArrayList;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -44,16 +49,14 @@ public class ProductService {
     private final ProductRepository productRepository;
     private final ImageRepository imageRepository;
     private final BookmarkRepository bookmarkRepository;
-
     private final ProductImageRepository productImageRepository;
     private final BiddingRepository biddingRepository;
     private final S3Service s3Service;
     private final SilentNotificationsRepository silentNotificationsRepository;
+    private final ApplicationEventPublisher publisher;
 
     @Transactional
-    public void createProduct(ProductCreateRequest request, List<MultipartFile> imageFiles, CustomMemberDetails memberDetails) {
-
-        Member member = memberDetails.getMember();
+    public void createProduct(ProductCreateRequest request, Member member) {
 
         //1. 상품 정보 유효성 확인
         checkProduct(request.initialPrice(), request.category(), request.deadline());
@@ -71,9 +74,12 @@ public class ProductService {
 
         productRepository.save(product);
 
-        for (MultipartFile imageFile : imageFiles) {
-            //이미지 저장
-            String imageUrl = s3Service.upload(imageFile);
+        List<ImageUploadRequest> uploadRequests = new ArrayList<>();
+
+        for (MultipartFile imageFile : request.files()) {
+            String uploadFileName = FileUtils.createFileName(imageFile.getOriginalFilename());
+            String imageUrl = s3Service.generateS3FileUrl(uploadFileName);
+            uploadRequests.add(new ImageUploadRequest(imageFile, uploadFileName));
 
             Image image = Image.builder()
                     .imageUrl(imageUrl)
@@ -89,6 +95,8 @@ public class ProductService {
 
             productImageRepository.save(productImage);
         }
+
+        publisher.publishEvent(new ImageUploadEvent(uploadRequests));
     }
 
 
@@ -163,11 +171,10 @@ public class ProductService {
     @Transactional
     public void updateProduct(
             Long id,
-            ProductUpdateRequest request,
+            ProductUpdateRequestWithoutImage request,
             List<MultipartFile> imageFiles,
-            CustomMemberDetails memberDetails){
-
-        Member member = memberDetails.getMember();
+            Member member
+    ){
 
         Product product = productRepository.findById(id)
                 .orElseThrow(() -> new BusinessException(NOT_FOUND));
@@ -183,25 +190,21 @@ public class ProductService {
 
         //Todo: 3. 구매 내역에 있는 상품인지 체크
 
-
-        //4. 상품 이미지 수정
-        //4-1. 삭제된 상품 이미지 처리
         List<String> deletedImageUrls = request.deletedImageUrls();
 
-        // 이미지와 연관된 상품 이미지 및 이미지 삭제
         List<Image> images = imageRepository.findImageByImageUrls(deletedImageUrls);
+        List<Long> imageIds = toImageIds(images);
         productImageRepository.deleteByImageIds(images);
-        imageRepository.deleteByImageUrls(deletedImageUrls);
+        imageRepository.deleteByIds(imageIds);
 
-        // 이미지 파일 삭제 (S3에 있는 이미지 파일 삭제)
-        for (String imageUrl : deletedImageUrls) {
-            s3Service.deleteFile(imageUrl);
-        }
+        List<ImageUploadRequest> uploadRequests = new ArrayList<>();
 
         //4-2. 새로 추가된 상품 이미지 저장
         for (MultipartFile imageFile : imageFiles) {
             //이미지 저장
-            String imageUrl = s3Service.upload(imageFile);
+            String uploadFileName = FileUtils.createFileName(imageFile.getOriginalFilename());
+            String imageUrl = s3Service.generateS3FileUrl(uploadFileName);
+            uploadRequests.add(new ImageUploadRequest(imageFile, uploadFileName));
 
             Image image = Image.builder()
                     .imageUrl(imageUrl)
@@ -224,6 +227,8 @@ public class ProductService {
         product.updateContent(request.content());
         product.updateCategory(Category.valueOf(request.category()));
         product.updateDeadline(request.deadline());
+
+        publisher.publishEvent(new ImageUploadEvent(uploadRequests));
     }
 
     public void turnOffProductNotification(Long productId, CustomMemberDetails memberDetails){
@@ -263,6 +268,33 @@ public class ProductService {
         silentNotificationsRepository.delete(silentNotifications);
     }
 
+    @Transactional
+    public void addImage(Member member, Long productId, MultipartFile file) {
+        Product product = productRepository.findById(productId)
+                .orElseThrow(() -> new BusinessException(NOT_FOUND));
+
+        if (!product.isOwner(member)) {
+            throw new BusinessException(INSUFFICIENT_PERMISSION);
+        }
+
+        String uploadFileName = FileUtils.createFileName(file.getOriginalFilename());
+        String imageUrl = s3Service.generateS3FileUrl(uploadFileName);
+
+        Image image = Image.builder()
+                .imageUrl(imageUrl)
+                .build();
+
+        imageRepository.save(image);
+
+        ProductImage productImage = ProductImage.builder()
+                .product(product)
+                .image(image)
+                .build();
+
+        productImageRepository.save(productImage);
+        publisher.publishEvent(new ImageUploadEvent(List.of(new ImageUploadRequest(file, uploadFileName))));
+    }
+
     private void checkRelatedBidding(Product product){
         if (biddingRepository.existsByProduct(product)) {
             throw new BusinessException(RELATED_BIDDING_EXISTS);
@@ -295,4 +327,9 @@ public class ProductService {
         }
     }
 
+    private List<Long> toImageIds(List<Image> images) {
+        return images.stream()
+                .map(image -> image.getImageId())
+                .toList();
+    }
 }

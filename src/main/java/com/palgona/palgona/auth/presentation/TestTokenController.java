@@ -20,7 +20,7 @@ import org.springframework.web.bind.annotation.*;
 @Slf4j
 public class TestTokenController {
 
-    private static final String SOCIAL_ID = "12317237";
+    private static final String SOCIAL_ID = "010010010010";
     private final JwtService jwtService;
     private final MemberRepository memberRepository;
     private final NotificationRepository notificationRepository;

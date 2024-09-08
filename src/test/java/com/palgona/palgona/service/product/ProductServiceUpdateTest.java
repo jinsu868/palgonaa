@@ -11,13 +11,13 @@ import com.palgona.palgona.product.domain.Category;
 import com.palgona.palgona.product.domain.Product;
 import com.palgona.palgona.product.domain.ProductImage;
 import com.palgona.palgona.product.domain.ProductState;
-import com.palgona.palgona.product.dto.request.ProductUpdateRequest;
+import com.palgona.palgona.product.dto.request.ProductUpdateRequestWithoutImage;
 import com.palgona.palgona.bidding.domain.BiddingRepository;
 import com.palgona.palgona.image.domain.ImageRepository;
 import com.palgona.palgona.product.domain.ProductImageRepository;
 import com.palgona.palgona.product.domain.ProductRepository;
 import com.palgona.palgona.product.application.ProductService;
-import com.palgona.palgona.image.application.S3Service;
+import com.palgona.palgona.image.domain.S3Client;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -47,7 +47,7 @@ public class ProductServiceUpdateTest {
     @Mock
     private ProductImageRepository productImageRepository;
     @Mock
-    private S3Service s3Service;
+    private S3Client s3Client;
     @Mock
     private BiddingRepository biddingRepository;
     @InjectMocks
@@ -74,7 +74,7 @@ public class ProductServiceUpdateTest {
         );
 
         //업데이트 요청 내용
-        ProductUpdateRequest request = createDto();
+        ProductUpdateRequestWithoutImage request = createDto();
 
         MockMultipartFile image3 = new MockMultipartFile(
                 "image3",
@@ -101,10 +101,10 @@ public class ProductServiceUpdateTest {
         verify(imageRepository, times(1)).findImageByImageUrls(request.deletedImageUrls());
         verify(productImageRepository, times(1)).deleteByImageIds(images);
         verify(imageRepository, times(1)).deleteByImageUrls(request.deletedImageUrls());
-        verify(s3Service, times(request.deletedImageUrls().size())).deleteFile(any(String.class));
+        verify(s3Client, times(request.deletedImageUrls().size())).deleteFile(any(String.class));
 
         //4-2. 새로 추가된 상품 이미지 저장
-        verify(s3Service, times(update_images.size())).upload(any(MultipartFile.class));
+        verify(s3Client, times(update_images.size())).upload(any(MultipartFile.class));
         verify(imageRepository, times(update_images.size())).save(any(Image.class));
         verify(productImageRepository, times(update_images.size())).save(any(ProductImage.class));
 
@@ -139,7 +139,7 @@ public class ProductServiceUpdateTest {
         );
 
         //업데이트 요청 내용
-        ProductUpdateRequest request = createDto();
+        ProductUpdateRequestWithoutImage request = createDto();
 
         MockMultipartFile image3 = new MockMultipartFile(
                 "image3",
@@ -166,10 +166,10 @@ public class ProductServiceUpdateTest {
         verify(imageRepository, times(1)).findImageByImageUrls(request.deletedImageUrls());
         verify(productImageRepository, times(1)).deleteByImageIds(images);
         verify(imageRepository, times(1)).deleteByImageUrls(request.deletedImageUrls());
-        verify(s3Service, times(request.deletedImageUrls().size())).deleteFile(any(String.class));
+        verify(s3Client, times(request.deletedImageUrls().size())).deleteFile(any(String.class));
 
         //4-2. 새로 추가된 상품 이미지 저장
-        verify(s3Service, times(update_images.size())).upload(any(MultipartFile.class));
+        verify(s3Client, times(update_images.size())).upload(any(MultipartFile.class));
         verify(imageRepository, times(update_images.size())).save(any(Image.class));
         verify(productImageRepository, times(update_images.size())).save(any(ProductImage.class));
 
@@ -191,7 +191,7 @@ public class ProductServiceUpdateTest {
         Long productId = 1L;
 
         // 수정 정보
-        ProductUpdateRequest request = createDto();
+        ProductUpdateRequestWithoutImage request = createDto();
         List<MultipartFile> images = new ArrayList<>();
 
         // when
@@ -217,7 +217,7 @@ public class ProductServiceUpdateTest {
         Product product = createProduct(owner);
 
         //수정 정보
-        ProductUpdateRequest request = createDto();
+        ProductUpdateRequestWithoutImage request = createDto();
         List<MultipartFile> images = new ArrayList<>();
 
         //when
@@ -241,7 +241,7 @@ public class ProductServiceUpdateTest {
         Product product = createProduct(owner);
 
         //상품 수정 정보
-        ProductUpdateRequest request = createDto();
+        ProductUpdateRequestWithoutImage request = createDto();
 
         // 수정할 이미지
         List<MultipartFile> images = new ArrayList<>();
@@ -286,7 +286,7 @@ public class ProductServiceUpdateTest {
         List<String> deletedImageUrls = Arrays.asList("image1", "image2");
         List<MultipartFile> update_images = new ArrayList<>();
 
-        ProductUpdateRequest request = new ProductUpdateRequest(
+        ProductUpdateRequestWithoutImage request = new ProductUpdateRequestWithoutImage(
                 name,
                 initialPrice,
                 content,
@@ -325,7 +325,7 @@ public class ProductServiceUpdateTest {
         List<String> deletedImageUrls = Arrays.asList("image1", "image2");
         List<MultipartFile> update_images = new ArrayList<>();
 
-        ProductUpdateRequest request = new ProductUpdateRequest(
+        ProductUpdateRequestWithoutImage request = new ProductUpdateRequestWithoutImage(
                 name,
                 initialPrice,
                 content,
@@ -363,7 +363,7 @@ public class ProductServiceUpdateTest {
         List<String> deletedImageUrls = Arrays.asList("image1", "image2");
         List<MultipartFile> update_images = new ArrayList<>();
 
-        ProductUpdateRequest request = new ProductUpdateRequest(
+        ProductUpdateRequestWithoutImage request = new ProductUpdateRequestWithoutImage(
                 name,
                 initialPrice,
                 content,
@@ -414,7 +414,7 @@ public class ProductServiceUpdateTest {
         return product;
     }
 
-    private ProductUpdateRequest createDto(){
+    private ProductUpdateRequestWithoutImage createDto(){
         String name = "수정된 상품";
         Integer initialPrice = 10000;
         String content = "수정된 상품 설명입니다.";
@@ -423,7 +423,7 @@ public class ProductServiceUpdateTest {
         List<String> deletedImageUrls = Arrays.asList("image1", "image2");
         List<MultipartFile> update_images = new ArrayList<>();
 
-        ProductUpdateRequest request = new ProductUpdateRequest(
+        ProductUpdateRequestWithoutImage request = new ProductUpdateRequestWithoutImage(
                 name,
                 initialPrice,
                 content,

@@ -92,7 +92,7 @@ public class Product extends BaseTimeEntity {
     }
 
     public boolean isOwner(Member member){
-        return this.member.equals(member);
+        return this.member.getId() == member.getId();
     }
 
     public void addProductImage(ProductImage productImage) {
