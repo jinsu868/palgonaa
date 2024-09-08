@@ -15,8 +15,8 @@ public class S3Service {
     @Value("${s3.base.url}")
     private String baseUrl;
 
-    public String generateS3FileUrl(String name) {
-        return baseUrl + name;
+    public String generateS3FileUrl(String fileName) {
+        return baseUrl + fileName;
     }
 
     public String upload(MultipartFile file, String fileName) {

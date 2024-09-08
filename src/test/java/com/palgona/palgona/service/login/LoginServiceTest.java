@@ -15,7 +15,7 @@ import com.palgona.palgona.member.domain.Status;
 import com.palgona.palgona.member.dto.request.MemberCreateRequest;
 import com.palgona.palgona.member.domain.MemberRepository;
 import com.palgona.palgona.auth.application.LoginService;
-import com.palgona.palgona.image.application.S3Service;
+import com.palgona.palgona.image.domain.S3Client;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -30,7 +30,7 @@ public class LoginServiceTest {
     @Mock
     MemberRepository memberRepository;
     @Mock
-    S3Service s3Service;
+    S3Client s3Client;
 
     @InjectMocks
     LoginService loginService;
@@ -50,7 +50,7 @@ public class LoginServiceTest {
 
         given(memberRepository.findBySocialId("111")).willReturn(Optional.of(member));
         given(memberRepository.existsByNickName("name")).willReturn(false);
-        given(s3Service.upload(image)).willReturn("image.png");
+        given(s3Client.upload(image)).willReturn("image.png");
 
         loginService.signUp(customMemberDetails, request);
 

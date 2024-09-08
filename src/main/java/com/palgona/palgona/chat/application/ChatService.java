@@ -16,7 +16,7 @@ import com.palgona.palgona.chat.domain.ChatMessageRepository;
 import com.palgona.palgona.chat.domain.ChatReadStatusRepository;
 import com.palgona.palgona.chat.domain.ChatRoomRepository;
 import com.palgona.palgona.member.domain.MemberRepository;
-import com.palgona.palgona.image.application.S3Service;
+import com.palgona.palgona.image.domain.S3Client;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -32,7 +32,7 @@ public class ChatService {
     private final ChatMessageRepository chatMessageRepository;
     private final MemberRepository memberRepository;
     private final ChatReadStatusRepository chatReadStatusRepository;
-    private final S3Service s3Service;
+    private final S3Client s3Client;
 
     @Transactional
     public ChatMessage sendMessage(ChatMessageRequest messageDto) {
@@ -51,7 +51,7 @@ public class ChatService {
 
         if (messageDto.imgData() != null && !messageDto.imgData().isEmpty()) {
             // imgData가 있는 경우 S3에 업로드
-            messageContent = s3Service.uploadBase64Image(messageDto.imgData());
+            messageContent = s3Client.uploadBase64Image(messageDto.imgData());
             messageType = ChatType.IMAGE;
         }
 
@@ -124,7 +124,8 @@ public class ChatService {
         Member receiver = findMember(messageDto.receiverId());
         ChatRoom room = findChatRoom(messageDto.roomId());
 
-        String url = s3Service.upload(file);
+        // TOOD: 이미지 업로드 수정
+        String url = s3Client.upload(file, "QWE");
         ChatMessage message = ChatMessage.builder()
                 .sender(sender)
                 .receiver(receiver)

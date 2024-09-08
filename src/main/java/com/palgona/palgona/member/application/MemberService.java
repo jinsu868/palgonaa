@@ -10,7 +10,7 @@ import com.palgona.palgona.member.dto.response.MemberDetailResponse;
 import com.palgona.palgona.member.dto.response.MemberResponse;
 import com.palgona.palgona.member.dto.request.MemberUpdateRequest;
 import com.palgona.palgona.member.domain.MemberRepository;
-import com.palgona.palgona.image.application.S3Service;
+import com.palgona.palgona.image.domain.S3Client;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -21,7 +21,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class MemberService {
 
     private final MemberRepository memberRepository;
-    private final S3Service s3Service;
+    private final S3Client s3Client;
 
     public MemberDetailResponse findMyProfile(CustomMemberDetails loginMember) {
         Member member = loginMember.getMember();
@@ -40,6 +40,7 @@ public class MemberService {
         return memberRepository.findAllOrderByIdDesc(cursor);
     }
 
+    // TODO: 이미지 업로드 수정
     @Transactional
     public void update(
             CustomMemberDetails loginMember,
@@ -50,8 +51,8 @@ public class MemberService {
         Member member = memberRepository.findBySocialId(socialId)
                 .orElseThrow(() -> new BusinessException(MEMBER_NOT_FOUND));
 
-        s3Service.deleteFile(member.getProfileImage());
-        String imageUrl = s3Service.upload(memberUpdateRequest.image());
+        s3Client.deleteFile(member.getProfileImage());
+        String imageUrl = s3Client.upload(memberUpdateRequest.image(), "QWER");
 
         member.updateNickName(memberUpdateRequest.nickName());
         member.updateProfileImage(imageUrl);
