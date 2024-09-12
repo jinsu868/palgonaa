@@ -24,9 +24,19 @@ public interface BiddingRepository extends JpaRepository<Bidding, Long> {
     List<Bidding> findExpiredBiddingsWithPessimisticLock(@Param("currentDateTime") LocalDateTime currentDateTime);
     boolean existsByProduct(Product product);
 
+    @Query("""
+        SELECT MAX(b.price)
+        FROM Bidding b
+        WHERE b.product = :product
+        """)
     Optional<Integer> findHighestPriceByProduct(Product product);
 
     boolean existsByMember(Member member);
 
+    @Query("""
+       SELECT MAX(b.price)
+       FROM Bidding b
+       WHERE b.member = :member
+       """)
     Optional<Integer> findHighestPriceByMember(Member member);
 }

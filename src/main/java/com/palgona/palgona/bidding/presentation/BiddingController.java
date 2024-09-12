@@ -28,9 +28,15 @@ public class BiddingController {
 
     @PostMapping(value = "/attempt", consumes = {MediaType.APPLICATION_JSON_VALUE})
     @Operation(summary = "입찰 진행 api", description = "물건 id와 가격을 받아서 입찰을 진행한다.")
-    public ResponseEntity<Void> attemptBidding(@AuthenticationPrincipal CustomMemberDetails member,
-                                               @RequestBody BiddingAttemptRequest request) {
-        biddingService.attemptBidding(member.getMember(), request);
+    public ResponseEntity<Void> attemptBidding(
+            @AuthenticationPrincipal CustomMemberDetails loginMember,
+            @RequestBody BiddingAttemptRequest request
+    ) {
+        biddingService.attemptBidding(
+                request.productId(),
+                loginMember.getMember(),
+                request.price()
+        );
         return ResponseEntity.ok().build();
     }
 
