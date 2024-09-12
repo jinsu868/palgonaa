@@ -114,8 +114,7 @@ public class Product extends BaseTimeEntity {
     public void updateProductState(ProductState productState) {this.productState = productState;}
 
     public boolean isDeadlineReached() {
-        LocalDateTime currentDateTime = LocalDateTime.now();
-        return currentDateTime.isAfter(this.deadline);
+        return LocalDateTime.now().isAfter(this.deadline);
     }
 
     public boolean isOwner(Member member){

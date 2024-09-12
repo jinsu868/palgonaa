@@ -28,6 +28,7 @@ import java.util.ArrayList;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -113,7 +114,13 @@ public class ProductService {
                                                            String cursor,
                                                            int pageSize
     ) {
-        return productRepository.findAllByCategoryAndSearchWord(category, searchWord, cursor, sortType, pageSize);
+        return productRepository.findAllByCategoryAndSearchWord(
+                category,
+                searchWord,
+                cursor,
+                sortType,
+                pageSize
+        );
     }
 
     @Transactional
