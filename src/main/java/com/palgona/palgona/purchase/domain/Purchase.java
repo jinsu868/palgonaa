@@ -63,6 +63,15 @@ public class Purchase extends BaseTimeEntity {
         this.deadline = LocalDateTime.now().plusDays(1);
     }
 
+    public static Purchase of(int purchasePrice, Bidding bidding, Member member) {
+        return new Purchase(
+                purchasePrice,
+                bidding,
+                member
+        );
+    }
+
+
     public void confirm() {
         state = PurchaseState.CONFIRM;
     }
