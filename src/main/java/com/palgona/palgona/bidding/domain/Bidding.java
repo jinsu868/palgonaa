@@ -52,4 +52,12 @@ public class Bidding extends BaseTimeEntity {
     public void updateState(BiddingState state) {
         this.state = state;
     }
+
+    public void success() {
+        state = BiddingState.SUCCESS;
+    }
+
+    public void fail() {
+        state = BiddingState.FAILED;
+    }
 }

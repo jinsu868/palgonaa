@@ -4,6 +4,7 @@ import com.palgona.palgona.member.domain.Member;
 import com.palgona.palgona.product.infrastructure.ProductRepositoryCustom;
 import com.palgona.palgona.product.infrastructure.querydto.ProductDetailQueryResponse;
 import jakarta.persistence.LockModeType;
+import java.util.List;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
@@ -42,4 +43,11 @@ public interface ProductRepository extends JpaRepository<Product, Long>, Product
     Optional<ProductDetailQueryResponse> findProductDetailsById(Long productId, Member member);
 
 
+    @Query("""
+       SELECT p
+       FROM Product p
+       WHERE p.deadline < CURRENT_TIMESTAMP
+       AND p.productState = 'ON_SALE'
+        """)
+    List<Product> findAuctionEndedProductsInOnSaleState();
 }

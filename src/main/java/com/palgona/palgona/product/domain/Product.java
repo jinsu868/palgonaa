@@ -130,4 +130,13 @@ public class Product extends BaseTimeEntity {
     public void addProductImage(ProductImage productImage) {
         productImages.add(productImage);
     }
+
+    public void expire() {
+        productState = ProductState.EXPIRED;
+    }
+
+    public void sell() {
+        productState = ProductState.SOLD_OUT;
+    }
+
 }
