@@ -14,20 +14,25 @@ import org.springframework.data.repository.query.Param;
 
 public interface PurchaseRepository extends JpaRepository<Purchase, Long>, PurchaseRepositoryCustom {
 
-    @Lock(LockModeType.PESSIMISTIC_WRITE)
-    @Query("select pc from Purchase pc join fetch pc.bidding b join fetch b.member m")
-    Optional<Purchase> findByIdWithSellerAndPessimisticLock(Long id);
-
-    @Lock(LockModeType.PESSIMISTIC_WRITE)
-    @Query("select pc from Purchase pc join fetch pc.member m")
-    Optional<Purchase> findByIdWithBuyerAndPessimisticLock(Long id);
-
-    @Query("select pc from Purchase pc "
-            + "join fetch pc.member m "
-            + "where pc.state = 'WAIT' and pc.deadline < :currentDateTime")
-    List<Purchase> findAllByDeadline(@Param("currentDateTime") LocalDateTime currentDateTime);
+    @Query("""
+        SELECT pc
+        FROM Purchase pc
+        JOIN FETCH pc.bidding b
+        WHERE pc.state = 'WAIT'
+        AND pc.deadline < CURRENT_TIMESTAMP
+    """)
+    List<Purchase> findExpiredPurchasesWithBidding();
 
     @Modifying(clearAutomatically = true)
     @Query("update Purchase pc set pc.state = :state where pc.id in :purchaseCanceledIds")
-    int bulkUpdateState(List<Long> purchaseCanceledIds, PurchaseState state);
+    int bulkUpdateStateToCancel(List<Long> purchaseCanceledIds, PurchaseState state);
+
+    @Query("""
+        SELECT p
+        FROM Purchase p
+        JOIN FETCH p.bidding b
+        WHERE p.id = :id 
+    """)
+    Optional<Purchase> findByIdWithBidding(Long id);
+
 }
