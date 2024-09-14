@@ -17,13 +17,6 @@ public interface BiddingRepository extends JpaRepository<Bidding, Long> {
 
     Page<Bidding> findAllByProduct(Pageable pageable, Product product);
 
-    @Lock(LockModeType.PESSIMISTIC_WRITE)
-    @Query("SELECT b FROM Bidding b "
-            + "JOIN FETCH b.member m "
-            + "WHERE b.state = 'ATTEMPT' AND b.product.deadline <= :currentDateTime")
-    List<Bidding> findExpiredBiddingsWithPessimisticLock(@Param("currentDateTime") LocalDateTime currentDateTime);
-    boolean existsByProduct(Product product);
-
     @Query("""
         SELECT MAX(b.price)
         FROM Bidding b
@@ -31,7 +24,7 @@ public interface BiddingRepository extends JpaRepository<Bidding, Long> {
         """)
     Optional<Integer> findHighestPriceByProduct(Product product);
 
-    boolean existsByMember(Member member);
+    boolean existsByProduct(Product product);
 
     @Query("""
        SELECT MAX(b.price)

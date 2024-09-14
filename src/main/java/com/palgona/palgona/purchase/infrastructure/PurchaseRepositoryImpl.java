@@ -41,7 +41,7 @@ public class PurchaseRepositoryImpl implements PurchaseRepositoryCustom {
                 .from(purchase)
                 .innerJoin(purchase.bidding, bidding)
                 .innerJoin(bidding.product, product)
-                .where(purchase.member.eq(member),
+                .where(purchase.buyer.eq(member),
                         ltPurchaseId(cursor))
                 .orderBy(purchase.id.desc())
                 .limit(pageSize + 1)
