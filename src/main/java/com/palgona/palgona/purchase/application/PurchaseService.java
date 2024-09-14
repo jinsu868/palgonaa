@@ -18,7 +18,6 @@ import com.palgona.palgona.purchase.dto.request.PurchaseCancelRequest;
 import com.palgona.palgona.purchase.dto.response.PurchaseResponse;
 import com.palgona.palgona.mileage.domain.MileageHistoryRepository;
 import com.palgona.palgona.purchase.infrastructure.PurchaseRepository;
-import jakarta.persistence.EntityManager;
 import java.util.ArrayList;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
@@ -36,7 +35,6 @@ public class PurchaseService {
     private final PurchaseRepository purchaseRepository;
     private final MileageHistoryRepository mileageHistoryRepository;
     private final MemberRepository memberRepository;
-    private final EntityManager em;
 
     public SliceResponse<PurchaseResponse> readPurchases(Member member, int pageSize, String cursor) {
         return purchaseRepository.findAllByMember(member, pageSize, cursor);

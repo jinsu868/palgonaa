@@ -43,4 +43,16 @@ public interface BiddingRepository extends JpaRepository<Bidding, Long> {
        DESC
        """)
     List<Bidding> findByProduct(Product product);
+
+    @Query("""
+      SELECT b
+      FROM Bidding b
+      WHERE b.price = (
+            SELECT MAX(bb.price)
+            FROM Bidding bb
+            WHERE bb.product = :product
+            )
+     AND b.product = :product
+    """)
+    Optional<Bidding> findHighestPriceBiddingByProduct(Product product);
 }
