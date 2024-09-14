@@ -65,4 +65,7 @@ public class Bidding extends BaseTimeEntity {
         state = BiddingState.CANCEL;
     }
 
+    public boolean isOwner(Member member) {
+        return this.member.getId() == member.getId();
+    }
 }

@@ -3,6 +3,7 @@ package com.palgona.palgona.bidding.application;
 import static com.palgona.palgona.common.error.code.BiddingErrorCode.BIDDING_EXPIRED_PRODUCT;
 import static com.palgona.palgona.common.error.code.BiddingErrorCode.BIDDING_INSUFFICIENT_BID;
 import static com.palgona.palgona.common.error.code.BiddingErrorCode.BIDDING_LOWER_PRICE;
+import static com.palgona.palgona.common.error.code.BiddingErrorCode.DUPLICATE_HIGHEST_BIDDING_MEMBER;
 import static com.palgona.palgona.common.error.code.ProductErrorCode.NOT_FOUND;
 
 import com.palgona.palgona.common.annotation.DistributedLock;
@@ -17,6 +18,7 @@ import com.palgona.palgona.member.domain.MemberRepository;
 import com.palgona.palgona.product.domain.ProductRepository;
 import jakarta.transaction.Transactional;
 import java.util.List;
+import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -31,11 +33,15 @@ public class BiddingService {
     private final MemberRepository memberRepository;
 
     @DistributedLock(key = "#productId")
-    public void attemptBidding(Long productId, Member biddingMember, int attemptPrice) {
+    public void attemptBidding(
+            Long productId,
+            Member biddingMember,
+            int attemptPrice
+    ) {
         Product product = findProduct(productId);
 
         validateProductDeadline(product);
-        validateBiddingCreate(attemptPrice, product);
+        validateBiddingCreate(attemptPrice, product, biddingMember);
 
         int previousBid = biddingRepository.findHighestPriceByMember(biddingMember).orElse(0);
         int extraCost = attemptPrice - previousBid;
@@ -88,8 +94,19 @@ public class BiddingService {
         }
     }
 
-    private void validateBiddingCreate(int attemptPrice, Product product) {
-        int highestPrice = biddingRepository.findHighestPriceByProduct(product).orElse(0);
+    private void validateBiddingCreate(
+            int attemptPrice,
+            Product product,
+            Member biddingMember
+    ) {
+        Optional<Bidding> highestBidding = biddingRepository.findHighestPriceBiddingByProduct(product);
+        int highestPrice = 0;
+
+        if (highestBidding.isPresent()) {
+            validateDuplicateBidding(highestBidding.get(), biddingMember);
+            highestPrice = highestBidding.get().getPrice();
+        }
+
         int threshold = (int) Math.pow(10, String.valueOf(attemptPrice).length() - 2);
         int priceDifference = attemptPrice -  highestPrice;
 
@@ -103,6 +120,15 @@ public class BiddingService {
 
         if (priceDifference < threshold) {
             throw new BusinessException(BIDDING_INSUFFICIENT_BID);
+        }
+    }
+
+    private void validateDuplicateBidding(
+            Bidding highestBidding,
+            Member biddingMember
+    ) {
+        if (highestBidding.isOwner(biddingMember)) {
+            throw new BusinessException(DUPLICATE_HIGHEST_BIDDING_MEMBER);
         }
     }
 
