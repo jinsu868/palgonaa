@@ -60,4 +60,9 @@ public class Bidding extends BaseTimeEntity {
     public void fail() {
         state = BiddingState.FAILED;
     }
+
+    public void cancel() {
+        state = BiddingState.CANCEL;
+    }
+
 }

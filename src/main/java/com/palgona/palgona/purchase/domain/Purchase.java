@@ -1,10 +1,6 @@
 package com.palgona.palgona.purchase.domain;
 
-import static com.palgona.palgona.common.error.code.PurchaseErrorCode.INSUFFICIENT_PERMISSION;
-import static com.palgona.palgona.common.error.code.PurchaseErrorCode.PURCHASE_EXPIRED;
-
 import com.palgona.palgona.common.entity.BaseTimeEntity;
-import com.palgona.palgona.common.error.exception.BusinessException;
 import com.palgona.palgona.bidding.domain.Bidding;
 import com.palgona.palgona.member.domain.Member;
 import jakarta.persistence.Column;
@@ -50,27 +46,41 @@ public class Purchase extends BaseTimeEntity {
     private Bidding bidding;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "member_id")
-    private Member member;
+    @JoinColumn(name = "seller_id")
+    private Member seller;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "buyer_id")
+    private Member buyer;
 
     @Builder
-    public Purchase(int purchasePrice, Bidding bidding, Member member) {
+    public Purchase(
+            int purchasePrice,
+            Bidding bidding,
+            Member buyer,
+            Member seller) {
         this.purchasePrice = purchasePrice;
         this.bidding = bidding;
-        this.member = member;
+        this.buyer = buyer;
+        this.seller = seller;
         this.reason = null;
         this.state = PurchaseState.WAIT;
         this.deadline = LocalDateTime.now().plusDays(1);
     }
 
-    public static Purchase of(int purchasePrice, Bidding bidding, Member member) {
+    public static Purchase of(
+            int purchasePrice,
+            Bidding bidding,
+            Member buyer,
+            Member seller
+    ) {
         return new Purchase(
                 purchasePrice,
                 bidding,
-                member
+                buyer,
+                seller
         );
     }
-
 
     public void confirm() {
         state = PurchaseState.CONFIRM;
@@ -84,15 +94,16 @@ public class Purchase extends BaseTimeEntity {
         state = PurchaseState.CANCEL;
     }
 
-    public void validateDeadline(LocalDateTime now) {
-        if (deadline.isBefore(now)) {
-            throw new BusinessException(PURCHASE_EXPIRED);
-        }
+    public boolean isDeadlineReached() {
+        return deadline.isBefore(LocalDateTime.now());
     }
 
-    public void validateOwner(Member member) {
-        if (!this.member.equals(member)) {
-            throw new BusinessException(INSUFFICIENT_PERMISSION);
-        }
+    public boolean isBuyer(Member buyer) {
+        return this.buyer.getId() == buyer.getId();
     }
+
+    public boolean isWaitState() {
+        return state == PurchaseState.WAIT;
+    }
+
 }

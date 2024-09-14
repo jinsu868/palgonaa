@@ -70,9 +70,14 @@ public class BiddingService {
             expiredProduct.sell();
             Bidding latestBidding = biddings.get(0);
             latestBidding.success();
-            Purchase purchase = Purchase.of(latestBidding.getPrice(), latestBidding, latestBidding.getMember());
-            purchaseRepository.save(purchase);
+            Purchase purchase = Purchase.of(
+                    latestBidding.getPrice(),
+                    latestBidding,
+                    latestBidding.getMember(),
+                    expiredProduct.getMember()
+            );
 
+            purchaseRepository.save(purchase);
 
             for (int i = 1; i < biddings.size(); i++) {
                 Bidding failedBidding = biddings.get(i);
