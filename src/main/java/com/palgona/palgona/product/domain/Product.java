@@ -28,7 +28,7 @@ public class Product extends BaseTimeEntity {
     private String name;
 
     @Column(nullable = false)
-    private Integer initialPrice;
+    private Integer currentPrice;
 
     private String content;
 
@@ -52,20 +52,20 @@ public class Product extends BaseTimeEntity {
 
     public static Product of(
             String name,
-            Integer initialPrice,
+            Integer currentPrice,
             String content,
             String category,
             LocalDateTime deadline,
             ProductState productState,
             Member member
     ) {
-        validateInitialPrice(initialPrice);
+        validateInitialPrice(currentPrice);
         validateCategory(category);
         validateDeadline(deadline);
 
         return new Product(
                 name,
-                initialPrice,
+                currentPrice,
                 content,
                 Category.valueOf(category),
                 deadline,
@@ -74,8 +74,8 @@ public class Product extends BaseTimeEntity {
         );
     }
 
-    private static void validateInitialPrice(Integer initialPrice) {
-        if (initialPrice < 0) {
+    private static void validateInitialPrice(Integer currentPrice) {
+        if (currentPrice < 0) {
             throw new BusinessException(INVALID_PRICE);
         }
     }
@@ -96,14 +96,14 @@ public class Product extends BaseTimeEntity {
 
     private Product(
             String name,
-            Integer initialPrice,
+            Integer currentPrice,
             String content,
             Category category,
             LocalDateTime deadline,
             ProductState productState,
             Member member) {
         this.name = name;
-        this.initialPrice = initialPrice;
+        this.currentPrice = currentPrice;
         this.content = content;
         this.category = category;
         this.deadline = deadline;
@@ -137,6 +137,10 @@ public class Product extends BaseTimeEntity {
 
     public void sell() {
         productState = ProductState.SOLD_OUT;
+    }
+
+    public void updatePrice(int price) {
+        currentPrice = price;
     }
 
 }

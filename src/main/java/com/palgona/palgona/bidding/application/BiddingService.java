@@ -47,7 +47,7 @@ public class BiddingService {
         validateProductDeadline(product);
         validateBiddingCreate(attemptPrice, product, biddingMember);
 
-        int previousBid = biddingRepository.findHighestPriceByMember(biddingMember).orElse(0);
+        int previousBid = product.getCurrentPrice();
         int extraCost = attemptPrice - previousBid;
 
         biddingMember.useMileage(extraCost);
@@ -58,7 +58,6 @@ public class BiddingService {
                 .build();
 
         biddingRepository.save(bidding);
-        memberRepository.save(biddingMember);
     }
 
     private Member findMemberByIdWithPessimisticLock(Long id) {
@@ -119,21 +118,16 @@ public class BiddingService {
             Member biddingMember
     ) {
         Optional<Bidding> highestBidding = biddingRepository.findHighestPriceBiddingByProduct(product);
-        int highestPrice = 0;
+        int highestPrice = product.getCurrentPrice();
 
         if (highestBidding.isPresent()) {
             validateDuplicateBidding(highestBidding.get(), biddingMember);
-            highestPrice = highestBidding.get().getPrice();
         }
 
         int threshold = (int) Math.pow(10, String.valueOf(attemptPrice).length() - 2);
         int priceDifference = attemptPrice -  highestPrice;
 
-        if (attemptPrice < product.getInitialPrice()) {
-            throw new BusinessException(BIDDING_LOWER_PRICE);
-        }
-
-        if (attemptPrice <= highestPrice) {
+        if (priceDifference >= attemptPrice) {
             throw new BusinessException(BIDDING_LOWER_PRICE);
         }
 

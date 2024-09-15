@@ -59,7 +59,7 @@ public class ProductRepositoryImpl implements ProductRepositoryCustom {
                         new CaseBuilder()
                                 .when(bidding.price.max().isNotNull())
                                 .then(bidding.price.max())
-                                .otherwise(product.initialPrice),
+                                .otherwise(product.currentPrice),
                         JPAExpressions
                                 .select(bookmark.count())
                                 .from(bookmark)
@@ -86,7 +86,7 @@ public class ProductRepositoryImpl implements ProductRepositoryCustom {
                 ProductQueryResponse.class,
                         product.id,
                         product.name,
-                        bidding.price.max().coalesce(product.initialPrice),
+                        bidding.price.max().coalesce(product.currentPrice),
                         bookmark.countDistinct().intValue().coalesce(0),
                         product.deadline,
                         product.createdAt

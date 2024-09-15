@@ -30,7 +30,7 @@ public interface ProductRepository extends JpaRepository<Product, Long>, Product
            m.id,
            m.nickName,
            m.profileImage,
-           coalesce((select bd.price from Bidding bd where bd.product = p order by bd.createdAt desc limit 1), p.initialPrice),
+           coalesce((select bd.price from Bidding bd where bd.product = p order by bd.createdAt desc limit 1), p.currentPrice),
            (select count(bm) from Bookmark bm where bm.product = p),
            (select count(cr) from ChatRoom cr where cr.product = p),
            case when (select count(s) from SilentNotifications s where s.member = :member and s.product = p) > 0 then true else false end
