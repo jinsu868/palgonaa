@@ -4,6 +4,7 @@ import static com.palgona.palgona.common.error.code.BiddingErrorCode.BIDDING_EXP
 import static com.palgona.palgona.common.error.code.BiddingErrorCode.BIDDING_INSUFFICIENT_BID;
 import static com.palgona.palgona.common.error.code.BiddingErrorCode.BIDDING_LOWER_PRICE;
 import static com.palgona.palgona.common.error.code.BiddingErrorCode.DUPLICATE_HIGHEST_BIDDING_MEMBER;
+import static com.palgona.palgona.common.error.code.MemberErrorCode.MEMBER_NOT_FOUND;
 import static com.palgona.palgona.common.error.code.ProductErrorCode.NOT_FOUND;
 
 import com.palgona.palgona.common.annotation.DistributedLock;
@@ -17,8 +18,10 @@ import com.palgona.palgona.purchase.infrastructure.PurchaseRepository;
 import com.palgona.palgona.member.domain.MemberRepository;
 import com.palgona.palgona.product.domain.ProductRepository;
 import jakarta.transaction.Transactional;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -39,12 +42,14 @@ public class BiddingService {
             int attemptPrice
     ) {
         Product product = findProduct(productId);
+        biddingMember = findMemberByIdWithPessimisticLock(biddingMember.getId());
 
         validateProductDeadline(product);
         validateBiddingCreate(attemptPrice, product, biddingMember);
 
         int previousBid = biddingRepository.findHighestPriceByMember(biddingMember).orElse(0);
         int extraCost = attemptPrice - previousBid;
+
         biddingMember.useMileage(extraCost);
         Bidding bidding = Bidding.builder()
                 .member(biddingMember)
@@ -54,6 +59,11 @@ public class BiddingService {
 
         biddingRepository.save(bidding);
         memberRepository.save(biddingMember);
+    }
+
+    private Member findMemberByIdWithPessimisticLock(Long id) {
+        return memberRepository.findByIdWithPessimisticLock(id)
+                        .orElseThrow(() -> new BusinessException(MEMBER_NOT_FOUND));
     }
 
     public Page<Bidding> findAllByProductId(long productId, Pageable pageable) {
@@ -68,6 +78,8 @@ public class BiddingService {
         List<Product> auctionFinishedProduct = productRepository.findAuctionEndedProductsInOnSaleState();
         for (Product expiredProduct : auctionFinishedProduct) {
             List<Bidding> biddings = biddingRepository.findByProduct(expiredProduct);
+            Set<Member> biddingMembers = new HashSet<>();
+
             if (biddings.isEmpty()) {
                 expiredProduct.expire();
                 continue;
@@ -76,6 +88,8 @@ public class BiddingService {
             expiredProduct.sell();
             Bidding latestBidding = biddings.get(0);
             latestBidding.success();
+            biddingMembers.add(latestBidding.getMember());
+
             Purchase purchase = Purchase.of(
                     latestBidding.getPrice(),
                     latestBidding,
@@ -88,8 +102,13 @@ public class BiddingService {
             for (int i = 1; i < biddings.size(); i++) {
                 Bidding failedBidding = biddings.get(i);
                 Member losingMember = failedBidding.getMember();
+                if (biddingMembers.contains(losingMember)) {
+                    continue;
+                }
+
                 losingMember.refundMileage(failedBidding.getPrice());
                 failedBidding.fail();
+                biddingMembers.add(losingMember);
             }
         }
     }
