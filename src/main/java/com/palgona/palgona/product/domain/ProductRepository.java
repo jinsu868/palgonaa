@@ -50,4 +50,12 @@ public interface ProductRepository extends JpaRepository<Product, Long>, Product
        AND p.productState = 'ON_SALE'
         """)
     List<Product> findAuctionEndedProductsInOnSaleState();
+
+    @Query("""
+      SELECT p.id
+      FROM Product p
+      WHERE p.deadline < CURRENT_TIMESTAMP 
+      AND p.productState = 'ON_SALE'
+    """)
+    List<Long> findAuctionEndedProductIdsInOnSaleState();
 }
