@@ -18,18 +18,24 @@ public class BookmarkController {
 
     @PostMapping("/{productId}")
     @Operation(summary = "북마크 추가 api", description = "상품id를 받아서 북마크 추가를 진행한다.")
-    public ResponseEntity<Void> createBookmark(@PathVariable Long productId, @AuthenticationPrincipal CustomMemberDetails member){
+    public ResponseEntity<Void> createBookmark(
+            @PathVariable Long productId,
+            @AuthenticationPrincipal CustomMemberDetails loginMember
+    ){
 
-        bookmarkService.createBookmark(productId, member);
+        bookmarkService.createBookmark(productId, loginMember.getMember());
 
         return ResponseEntity.ok().build();
     }
 
     @DeleteMapping("/{productId}")
     @Operation(summary = "북마크 삭제 api", description = "상품id를 받아서 북마크 삭제를 진행한다.")
-    public ResponseEntity<Void> deleteBookmark(@PathVariable Long productId, @AuthenticationPrincipal CustomMemberDetails member){
+    public ResponseEntity<Void> deleteBookmark(
+            @PathVariable Long productId,
+            @AuthenticationPrincipal CustomMemberDetails loginMember
+    ){
 
-        bookmarkService.deleteBookmark(productId, member);
+        bookmarkService.deleteBookmark(productId, loginMember.getMember());
 
         return ResponseEntity.ok().build();
     }

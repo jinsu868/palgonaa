@@ -24,9 +24,18 @@ public class Bookmark {
     @JoinColumn(name ="product_id", nullable = false)
     Product product;
 
-    @Builder
-    Bookmark(Member member, Product product){
+    public Bookmark(Member member, Product product){
         this.member = member;
         this.product = product;
+    }
+
+    public static Bookmark of(
+            Member member,
+            Product product
+    ) {
+        return new Bookmark(
+                member,
+                product
+        );
     }
 }
