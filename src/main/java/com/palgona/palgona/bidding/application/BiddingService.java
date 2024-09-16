@@ -51,6 +51,7 @@ public class BiddingService {
         int extraCost = attemptPrice - previousBid;
 
         biddingMember.useMileage(extraCost);
+        product.updatePrice(attemptPrice);
         Bidding bidding = Bidding.builder()
                 .member(biddingMember)
                 .product(product)
@@ -105,6 +106,7 @@ public class BiddingService {
                     continue;
                 }
 
+                losingMember = findMemberByIdWithPessimisticLock(losingMember.getId());
                 losingMember.refundMileage(failedBidding.getPrice());
                 failedBidding.fail();
                 biddingMembers.add(losingMember);
