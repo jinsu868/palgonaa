@@ -23,8 +23,14 @@ public interface ImageRepository extends JpaRepository<Image, Long> {
     """)
     void deleteByImageUrls(List<String> urls);
 
-    @Query("select i from Image i join ProductImage pi on pi.image = i where pi.product.id = :productId")
-    List<Image> findAllByProductId(Long productId);
+    @Query("""
+    SELECT i.imageUrl
+    FROM Image i
+    INNER JOIN ProductImage pi
+    ON pi.image.imageId = i.imageId
+    WHERE pi.product.id = :productId
+    """)
+    List<String> findAllImageUrlByProductId(Long productId);
 
     @Modifying
     @Query("""

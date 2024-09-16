@@ -2,11 +2,14 @@ package com.palgona.palgona.product.infrastructure;
 
 import static com.palgona.palgona.bidding.domain.QBidding.bidding;
 import static com.palgona.palgona.bookmark.domain.QBookmark.bookmark;
+import static com.palgona.palgona.chat.domain.QChatRoom.chatRoom;
 import static com.palgona.palgona.image.domain.QImage.image;
 import static com.palgona.palgona.member.domain.QMember.member;
 import static com.palgona.palgona.product.domain.QProduct.product;
 import static com.palgona.palgona.product.domain.QProductImage.productImage;
+import static com.querydsl.core.types.ExpressionUtils.count;
 
+import com.palgona.palgona.chat.domain.QChatRoom;
 import com.palgona.palgona.common.dto.response.SliceResponse;
 import com.palgona.palgona.product.domain.Category;
 import com.palgona.palgona.product.domain.ProductState;
@@ -15,6 +18,8 @@ import com.palgona.palgona.product.dto.response.ProductPageResponse;
 import com.palgona.palgona.product.infrastructure.querydto.ImageQueryResponse;
 import com.palgona.palgona.product.infrastructure.querydto.ProductDetailQueryResponse;
 import com.palgona.palgona.product.infrastructure.querydto.ProductQueryResponse;
+import com.querydsl.core.annotations.QueryProjection;
+import com.querydsl.core.types.ExpressionUtils;
 import com.querydsl.core.types.Order;
 import com.querydsl.core.types.OrderSpecifier;
 import com.querydsl.core.types.Projections;
@@ -44,34 +49,37 @@ public class ProductRepositoryImpl implements ProductRepositoryCustom {
 
     @Override
     public Optional<ProductDetailQueryResponse> findProductWithAll(long productId){
-        ProductDetailQueryResponse result = queryFactory
-                .select(Projections.constructor(ProductDetailQueryResponse.class,
-                        product.id,
-                        product.name,
-                        product.content,
-                        product.category,
-                        product.productState,
-                        product.deadline,
-                        product.createdAt,
-                        member.id,
-                        member.nickName,
-                        member.profileImage,
-                        new CaseBuilder()
-                                .when(bidding.price.max().isNotNull())
-                                .then(bidding.price.max())
-                                .otherwise(product.currentPrice),
-                        JPAExpressions
-                                .select(bookmark.count())
+        return Optional.ofNullable(queryFactory.select(Projections.constructor(
+                ProductDetailQueryResponse.class,
+                product.id,
+                product.name,
+                product.content,
+                product.category,
+                product.productState,
+                product.deadline,
+                product.createdAt,
+                member.id,
+                member.nickName,
+                member.profileImage,
+                product.currentPrice,
+                ExpressionUtils.as(
+                        JPAExpressions.select(count(bookmark.id))
                                 .from(bookmark)
-                                .where(bookmark.product.eq(product))
-                ))
+                                .where(bookmark.product.id.eq(productId)),
+                        "bookmarkCount"
+                ),
+                ExpressionUtils.as(
+                        JPAExpressions.select(count(chatRoom.id))
+                                .from(chatRoom)
+                                .where(chatRoom.product.id.eq(productId)),
+                        "chatRoomCount"
+                )))
                 .from(product)
                 .join(product.member, member)
-                .leftJoin(bidding).on(bidding.product.id.eq(product.id))
-                .where(product.id.eq(productId))
-                .fetchOne();
-
-        return Optional.ofNullable(result);
+                .where(product.id.eq(productId)
+                .and(product.productState.ne(ProductState.DELETED))
+                )
+                .fetchOne());
     }
 
     @Override
