@@ -70,7 +70,11 @@ public class PurchaseService {
     }
 
     @Transactional
-    public void cancelPurchase(Member member, Long id, PurchaseCancelRequest request) {
+    public void cancelPurchase(
+            Member member,
+            Long id,
+            PurchaseCancelRequest request
+    ) {
         Purchase purchase = findPurchaseWithBidding(id);
         Member buyer = findMemberWithPessimisticLock(member.getId());
 

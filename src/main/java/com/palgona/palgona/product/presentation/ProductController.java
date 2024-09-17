@@ -46,10 +46,10 @@ public class ProductController {
     @Operation(summary = "상품 상세 조회 api", description = "상품 id를 받아 상품 상세 정보를 보여준다.")
     public ResponseEntity<ProductDetailResponse> readProduct(
             @PathVariable Long id,
-            @AuthenticationPrincipal CustomMemberDetails member
+            @AuthenticationPrincipal CustomMemberDetails loginMember
     ){
 
-        ProductDetailResponse productDetailResponse = productService.readProduct(id, member);
+        ProductDetailResponse productDetailResponse = productService.readProduct(id, loginMember.getMember());
 
         return ResponseEntity.ok()
                 .body(productDetailResponse);

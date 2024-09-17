@@ -18,7 +18,6 @@ public record ProductDetailQueryResponse(
         String ownerImgUrl,
         Integer highestBid,
         Long bookmarkCount,
-        Long chatroomCount,
-        Boolean isSilent
+        Long chatroomCount
 ) {
 }

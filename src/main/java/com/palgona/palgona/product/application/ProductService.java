@@ -24,11 +24,11 @@ import com.palgona.palgona.image.domain.ImageRepository;
 import com.palgona.palgona.product.domain.ProductRepository;
 import com.palgona.palgona.product.event.ImageUploadEvent;
 import com.palgona.palgona.product.infrastructure.querydto.ProductDetailQueryResponse;
+import com.palgona.palgona.product.infrastructure.querydto.ProductQueryResponse;
 import java.util.ArrayList;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
-import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -83,28 +83,13 @@ public class ProductService {
         return product.getId();
     }
 
-    public ProductDetailResponse readProduct(Long productId, CustomMemberDetails memberDetail){
-        Member member = memberDetail.getMember();
+    public ProductDetailResponse readProduct(Long productId, Member member){
+        ProductDetailQueryResponse queryResponse = productRepository.findProductWithAll(productId)
+                        .orElseThrow(() -> new BusinessException(NOT_FOUND));
 
-        //1. 상품 정보 가져오기(상품, 멤버 정보, 최고 입찰가, 북마크 개수, 채팅 개수)
-        ProductDetailQueryResponse queryResponse = productRepository.findProductDetailsById(productId, member)
-                .orElseThrow(() -> new BusinessException(NOT_FOUND));
-        log.info(queryResponse.toString());
+        List<String> imageUrls = imageRepository.findAllImageUrlByProductId(productId);
 
-
-        //상품이 삭제되었는지 확인
-        if(queryResponse.productState() == ProductState.DELETED){
-            throw new BusinessException(DELETED_PRODUCT);
-        }
-
-        //2. 컬렉션 정보 가져오기(상품 이미지)
-        List<String> imageUrls= imageRepository.findAllByProductId(productId).stream()
-                .map(Image::getImageUrl)
-                .toList();
-        log.info(imageUrls.toString());
-
-
-        return ProductDetailResponse.from(queryResponse, imageUrls);
+        return ProductDetailResponse.of(queryResponse, imageUrls);
     }
 
     @Transactional(readOnly = true)

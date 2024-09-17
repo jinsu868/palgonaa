@@ -22,50 +22,33 @@ import static com.palgona.palgona.common.error.code.ProductErrorCode.NOT_FOUND;
 
 @Service
 @RequiredArgsConstructor
-@Transactional
 public class BookmarkService {
     private final BookmarkRepository bookmarkRepository;
     private final ProductRepository productRepository;
 
-    public void createBookmark(Long productId, CustomMemberDetails memberDetails){
-        Member member = memberDetails.getMember();
 
-        //1. 해당 상품이 존재하는지 확인
-        Product product = productRepository.findById(productId)
-                .orElseThrow(() -> new BusinessException(NOT_FOUND));
+    public void createBookmark(Long productId, Member member) {
+        Product product = findProduct(productId);
 
-        //2. 이미 추가된 찜인지 확인
-        bookmarkRepository.findByMemberAndProduct(member, product)
-                .ifPresent(b -> {
-                    throw new BusinessException(BOOKMARK_EXISTS);
-                });
+        validateBookmarkCreate(member, product);
 
-        //3. 찜 추가
-        Bookmark bookmark = Bookmark.builder()
-                .member(member)
-                .product(product)
-                .build();
-
+        Bookmark bookmark = Bookmark.of(member, product);
         bookmarkRepository.save(bookmark);
     }
 
-    public void deleteBookmark(Long productId, CustomMemberDetails memberDetails){
-        Member member = memberDetails.getMember();
+    public void deleteBookmark(Long productId, Member member){
+        Product product = findProduct(productId);
+        Bookmark bookmark = findBookmarkByProductAndMember(member, product);
 
-        //1. 해당 상품이 존재하는지 확인
-        Product product = productRepository.findById(productId)
-                .orElseThrow(() -> new BusinessException(NOT_FOUND));
-
-        //2. 해당 찜이 존재하는지 확인
-        Bookmark bookmark = bookmarkRepository.findByMemberAndProduct(member, product)
-                .orElseThrow(() -> new BusinessException(BOOKMARK_NOT_EXISTS));
-
-        //3. 찜 삭제
         bookmarkRepository.delete(bookmark);
     }
 
     @Transactional(readOnly = true)
-    public SliceResponse<BookmarkProductsResponse> readALlBookmark(CustomMemberDetails memberDetails, int cursor, int size){
+    public SliceResponse<BookmarkProductsResponse> readALlBookmark(
+            CustomMemberDetails memberDetails,
+            int cursor,
+            int size
+    ){
         Member member = memberDetails.getMember();
         PageRequest limit = PageRequest.of(cursor, size);
 
@@ -87,5 +70,21 @@ public class BookmarkService {
         String nextCursor = String.valueOf(nowCursor + 1);
 
         return SliceResponse.of(items, hasNext, nextCursor);
+    }
+
+    private void validateBookmarkCreate(Member member, Product product) {
+        bookmarkRepository.findByMemberAndProduct(member, product)
+                .ifPresent(b -> {throw new BusinessException(BOOKMARK_EXISTS);
+                });
+    }
+
+    private Product findProduct(Long id) {
+        return productRepository.findById(id)
+                .orElseThrow(() -> new BusinessException(NOT_FOUND));
+    }
+
+    private Bookmark findBookmarkByProductAndMember(Member member, Product product) {
+        return bookmarkRepository.findByMemberAndProduct(member, product)
+                .orElseThrow(() -> new BusinessException(BOOKMARK_NOT_EXISTS));
     }
 }
