@@ -7,7 +7,7 @@ public record ProductPageResponse(
         Long id,
         String name,
         int currentBid,
-        int bookmarkCount,
+        Long bookmarkCount,
         LocalDateTime deadline,
         LocalDateTime created_at,
         String imageUrl

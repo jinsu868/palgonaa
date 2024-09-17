@@ -1,6 +1,5 @@
 package com.palgona.palgona.product.infrastructure;
 
-import static com.palgona.palgona.bidding.domain.QBidding.bidding;
 import static com.palgona.palgona.bookmark.domain.QBookmark.bookmark;
 import static com.palgona.palgona.chat.domain.QChatRoom.chatRoom;
 import static com.palgona.palgona.image.domain.QImage.image;
@@ -9,7 +8,6 @@ import static com.palgona.palgona.product.domain.QProduct.product;
 import static com.palgona.palgona.product.domain.QProductImage.productImage;
 import static com.querydsl.core.types.ExpressionUtils.count;
 
-import com.palgona.palgona.chat.domain.QChatRoom;
 import com.palgona.palgona.common.dto.response.SliceResponse;
 import com.palgona.palgona.product.domain.Category;
 import com.palgona.palgona.product.domain.ProductState;
@@ -18,14 +16,11 @@ import com.palgona.palgona.product.dto.response.ProductPageResponse;
 import com.palgona.palgona.product.infrastructure.querydto.ImageQueryResponse;
 import com.palgona.palgona.product.infrastructure.querydto.ProductDetailQueryResponse;
 import com.palgona.palgona.product.infrastructure.querydto.ProductQueryResponse;
-import com.querydsl.core.annotations.QueryProjection;
 import com.querydsl.core.types.ExpressionUtils;
 import com.querydsl.core.types.Order;
 import com.querydsl.core.types.OrderSpecifier;
 import com.querydsl.core.types.Projections;
 import com.querydsl.core.types.dsl.BooleanExpression;
-import com.querydsl.core.types.dsl.CaseBuilder;
-import com.querydsl.core.types.dsl.StringExpressions;
 import com.querydsl.jpa.JPAExpressions;
 import com.querydsl.jpa.impl.JPAQueryFactory;
 import java.time.LocalDateTime;
@@ -40,10 +35,6 @@ import org.springframework.stereotype.Repository;
 @RequiredArgsConstructor
 @Repository
 public class ProductRepositoryImpl implements ProductRepositoryCustom {
-
-    private static final int MAX_PRICE_DIGIT = 9;
-    private static final int MAX_ID_DIGIT = 8;
-    private static final int MAX_BOOKMARK_DIGIT = 6;
 
     private final JPAQueryFactory queryFactory;
 
@@ -88,25 +79,28 @@ public class ProductRepositoryImpl implements ProductRepositoryCustom {
             String searchWord,
             String cursor,
             SortType sortType,
-            int pageSize) {
+            int pageSize
+    ) {
 
         List<ProductQueryResponse> productQueryResponses = queryFactory.select(Projections.constructor(
                 ProductQueryResponse.class,
                         product.id,
                         product.name,
-                        bidding.price.max().coalesce(product.currentPrice),
-                        bookmark.countDistinct().intValue().coalesce(0),
+                        product.currentPrice,
+                        ExpressionUtils.as(
+                                JPAExpressions.select(bookmark.count())
+                                        .from(bookmark)
+                                        .where(bookmark.product.eq(product)),
+                                "bookmarkCount"
+                        ),
                         product.deadline,
                         product.createdAt
                 ))
                 .from(product)
-                .leftJoin(bidding).on(bidding.product.id.eq(product.id))
-                .leftJoin(bookmark).on(bookmark.product.id.eq(product.id))
-                .where(contains(searchWord), categoryEq(category), stateIsNotDeleted())
-                .groupBy(product.id)
-                .having(isInSearchRange(cursor, sortType))
+                .where(contains(searchWord), categoryEq(category), isInSearchRange(cursor, sortType))
                 .orderBy(createOrderSpecifier(sortType))
                 .limit(pageSize + 1)
+                .setHint("javax.persistence.query.forceIndex", "idx_current_price_id")
                 .fetch();
 
         List<ImageQueryResponse> imageQueryResponses = queryFactory.select(Projections.constructor(
@@ -160,7 +154,7 @@ public class ProductRepositoryImpl implements ProductRepositoryCustom {
 
     private BooleanExpression contains(String searchWord) {
         if (searchWord != null) {
-            return product.name.like("%" + searchWord + "%");
+            return product.name.like(searchWord + "%");
         }
 
         return null;
@@ -189,9 +183,9 @@ public class ProductRepositoryImpl implements ProductRepositoryCustom {
         return switch (sortType) {
             case DEADLINE -> String.valueOf(lastProduct.deadline());
             case HIGHEST_PRICE, LOWEST_PRICE -> String.format("%09d", lastProduct.currentBid())
-                    + String.format("%08d", lastProduct.id());
-            case BOOK_MARK -> String.format("%06d", lastProduct.bookmarkCount())
-                    + String.format("%08d", lastProduct.id());
+                    + String.format("%09d", lastProduct.id());
+            case BOOK_MARK -> String.format("%09d", lastProduct.bookmarkCount())
+                    + String.format("%09d", lastProduct.id());
             default -> String.valueOf(lastProduct.id());
         };
     }
@@ -212,27 +206,29 @@ public class ProductRepositoryImpl implements ProductRepositoryCustom {
             return null;
         }
 
-        return switch (sortType) {
-            case DEADLINE -> product.deadline.before(LocalDateTime.parse(cursor, DateTimeFormatter.ISO_DATE_TIME));
-            case HIGHEST_PRICE -> StringExpressions.lpad(bidding.price.max().stringValue(), MAX_PRICE_DIGIT, '0')
-                    .concat(StringExpressions.lpad(product.id.stringValue(), MAX_ID_DIGIT, '0'))
-                    .lt(cursor);
-            case LOWEST_PRICE -> StringExpressions.lpad(bidding.price.max().stringValue(), MAX_PRICE_DIGIT, '0')
-                    .concat(StringExpressions.lpad(product.id.stringValue(), MAX_ID_DIGIT, '0'))
-                    .gt(cursor);
-            case BOOK_MARK -> StringExpressions.lpad(bookmark.countDistinct().stringValue(), MAX_BOOKMARK_DIGIT, '0')
-                    .concat(StringExpressions.lpad(product.id.stringValue(), MAX_ID_DIGIT, '0'))
-                    .lt(cursor);
-            default -> product.id.lt(Long.valueOf(cursor));
-        };
+        if (sortType.equals(SortType.LATEST)) {
+            return product.id.lt(Long.valueOf(cursor));
+        } else if (sortType.equals(SortType.DEADLINE)) {
+            return product.deadline.before(LocalDateTime.parse(cursor, DateTimeFormatter.ISO_DATE_TIME));
+        }
+
+        int beforeHighestPrice = Integer.parseInt(cursor.substring(0, 9));
+        Long beforeProductId = Long.parseLong(cursor.substring(9, 18));
+
+        if (sortType.equals(SortType.HIGHEST_PRICE)) {
+            return product.currentPrice.lt(beforeHighestPrice)
+                    .and(product.id.lt(beforeProductId));
+        } else {
+            return product.currentPrice.gt(beforeHighestPrice)
+                    .and(product.id.lt(beforeProductId));
+        }
     }
 
     private OrderSpecifier createOrderSpecifier(SortType sortType) {
         return switch (sortType) {
             case DEADLINE -> new OrderSpecifier<>(Order.DESC, product.deadline);
-            case HIGHEST_PRICE -> new OrderSpecifier<>(Order.DESC, bidding.price.max());
-            case LOWEST_PRICE -> new OrderSpecifier<>(Order.ASC, bidding.price.max());
-            case BOOK_MARK -> new OrderSpecifier<>(Order.DESC, bookmark.countDistinct());
+            case HIGHEST_PRICE -> new OrderSpecifier<>(Order.DESC, product.currentPrice);
+            case LOWEST_PRICE -> new OrderSpecifier<>(Order.ASC, product.currentPrice);
             default -> new OrderSpecifier<>(Order.DESC, product.id);
         };
     }

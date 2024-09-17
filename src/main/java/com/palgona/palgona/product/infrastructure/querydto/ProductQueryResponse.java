@@ -6,7 +6,7 @@ public record ProductQueryResponse(
         Long id,
         String name,
         int currentBid,
-        int bookmarkCount,
+        Long bookmarkCount,
         LocalDateTime deadline,
         LocalDateTime createdAt
 ) {
