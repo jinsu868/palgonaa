@@ -55,4 +55,14 @@ public interface BiddingRepository extends JpaRepository<Bidding, Long> {
      AND b.product = :product
     """)
     Optional<Bidding> findHighestPriceBiddingByProduct(Product product);
+
+    @Query(value = """
+        SELECT b
+        FROM bidding b
+        JOIN member m
+        ON b.member_id = :memberId
+        ORDER BY b.price DESC
+        LIMIT 1
+    """, nativeQuery = true)
+    Optional<Bidding> findHighestBeforeBiddingByMember(Long memberId);
 }
