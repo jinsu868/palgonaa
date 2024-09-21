@@ -1,6 +1,5 @@
 package com.palgona.palgona.bookmark.application;
 
-import com.palgona.palgona.common.dto.CustomMemberDetails;
 import com.palgona.palgona.common.dto.response.SliceResponse;
 import com.palgona.palgona.common.error.exception.BusinessException;
 import com.palgona.palgona.bookmark.domain.Bookmark;
@@ -45,23 +44,31 @@ public class BookmarkService {
 
     @Transactional(readOnly = true)
     public SliceResponse<BookmarkProductsResponse> readALlBookmark(
-            CustomMemberDetails memberDetails,
+            Member member,
             int cursor,
             int size
     ){
-        Member member = memberDetails.getMember();
+
         PageRequest limit = PageRequest.of(cursor, size);
 
+
+        //TODO: 쿼리 다 수정하고 Repository 로직 이동하기
         //멤버의 상품찜 목록에 있는 상품 전체 가져오기
         // 상품 정보 + 입찰 최신 정보 + 해당 상품의 북마크 개수 + 상품의 첫번째 이미지
         // 이때 삭제된 상품은 제외한다.
-        List<BookmarkProductsResponse> queryResults = bookmarkRepository.findBookmarkedProductsByMember(member, limit);
+        List<BookmarkProductsResponse> queryResults = bookmarkRepository.findBookmarkedProductsByMember(
+                member,
+                limit
+        );
 
         return convertToSlice(queryResults, cursor);
     }
 
 
-    private SliceResponse<BookmarkProductsResponse> convertToSlice(List<BookmarkProductsResponse> items, int nowCursor){
+    private SliceResponse<BookmarkProductsResponse> convertToSlice(
+            List<BookmarkProductsResponse> items,
+            int nowCursor
+    ){
         boolean hasNext = true;
         if(items.isEmpty()) {
             hasNext = false;

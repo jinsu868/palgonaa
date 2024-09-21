@@ -27,10 +27,14 @@ public class PurchaseController {
     public ResponseEntity<SliceResponse<PurchaseResponse>> readPurchases(
             @AuthenticationPrincipal CustomMemberDetails member,
             @RequestParam(defaultValue = "20") int pageSize,
-            @RequestParam(required = false) String cursor
+            @RequestParam(required = false) Long cursor
     ) {
 
-        SliceResponse<PurchaseResponse> response = purchaseService.readPurchases(member.getMember(), pageSize, cursor);
+        SliceResponse<PurchaseResponse> response = purchaseService.readPurchases(
+                member.getMember(),
+                pageSize,
+                cursor
+        );
 
         return ResponseEntity.ok(response);
     }
@@ -41,7 +45,10 @@ public class PurchaseController {
             @PathVariable Long purchaseId
     ) {
 
-        purchaseService.confirmPurchase(member.getMember(), purchaseId);
+        purchaseService.confirmPurchase(
+                member.getMember(),
+                purchaseId
+        );
 
         return ResponseEntity.ok().build();
     }
@@ -53,7 +60,11 @@ public class PurchaseController {
             @RequestBody PurchaseCancelRequest request
     ) {
 
-        purchaseService.cancelPurchase(member.getMember(), purchaseId, request);
+        purchaseService.cancelPurchase(
+                member.getMember(),
+                purchaseId,
+                request
+        );
 
         return ResponseEntity.ok().build();
     }

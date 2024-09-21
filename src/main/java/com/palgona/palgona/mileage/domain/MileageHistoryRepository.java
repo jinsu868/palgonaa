@@ -9,6 +9,4 @@ import org.springframework.data.jpa.repository.Query;
 import java.util.List;
 
 public interface MileageHistoryRepository extends JpaRepository<MileageHistory, Long> {
-    @Query("SELECT mh FROM MileageHistory mh WHERE mh.member = :member ORDER BY mh.createdAt DESC")
-    List<MileageHistory> findTopByMember(Member member, Pageable pageable);
 }

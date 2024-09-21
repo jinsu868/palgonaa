@@ -7,7 +7,6 @@ import static org.springframework.http.HttpHeaders.AUTHORIZATION;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.palgona.palgona.common.dto.CustomMemberDetails;
 import com.palgona.palgona.common.error.exception.BusinessException;
 import com.palgona.palgona.common.redis.RedisUtils;
 import com.palgona.palgona.image.application.S3Service;
@@ -18,14 +17,15 @@ import com.palgona.palgona.member.domain.Role;
 import com.palgona.palgona.member.domain.Status;
 import com.palgona.palgona.auth.dto.response.KakaoUserInfoResponse;
 import com.palgona.palgona.auth.dto.response.LoginResponse;
-import com.palgona.palgona.member.dto.request.MemberCreateRequest;
 import com.palgona.palgona.member.domain.MemberRepository;
+import com.palgona.palgona.member.dto.request.MemberCreateRequest;
+import com.palgona.palgona.mileage.domain.Mileage;
+import com.palgona.palgona.mileage.domain.MileageRepository;
 import com.palgona.palgona.product.event.ImageUploadEvent;
 import jakarta.servlet.http.HttpServletRequest;
 import java.util.ArrayList;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.http.HttpEntity;
@@ -40,8 +40,6 @@ import org.springframework.web.multipart.MultipartFile;
 
 @Service
 @RequiredArgsConstructor
-@Slf4j
-@Transactional
 public class LoginService {
 
     @Value("${s3.default.image}")
@@ -53,22 +51,33 @@ public class LoginService {
     private Long accessExpirationTime;
 
     private final MemberRepository memberRepository;
+    private final MileageRepository mileageRepository;
     private final S3Service s3Service;
     private final RestTemplate restTemplate;
     private final RedisUtils redisUtils;
     private final ApplicationEventPublisher publisher;
 
-    public Long signUp(CustomMemberDetails loginMember, MemberCreateRequest memberCreateRequest) {
-        Member member = findMemberBySocialId(loginMember);
-        validateRoleOfMember(member);
+    @Transactional
+    public Long signUp(
+            Member member,
+            MemberCreateRequest memberCreateRequest
+    ) {
+        member = findMember(member.getId());
         String nickName = memberCreateRequest.nickName();
-        MultipartFile image = memberCreateRequest.image();
+
+        validateRoleOfMember(member);
         validateNameDuplicated(nickName);
+
+        MultipartFile image = memberCreateRequest.image();
         String imageUrl = uploadImage(image);
+
+        Mileage mileage = Mileage.from(member);
+        mileageRepository.save(mileage);
 
         member.updateNickName(nickName);
         member.updateProfileImage(imageUrl);
         member.signUp();
+
         return member.getId();
     }
 
@@ -78,7 +87,7 @@ public class LoginService {
 
         Member findMember = memberRepository.findBySocialId(kakaoUserInfo.id())
                 .orElseGet(() -> {
-                    Member member = Member.of(0,
+                    Member member = Member.of(
                             Status.ACTIVE,
                             kakaoUserInfo.id(),
                             Role.GUEST);
@@ -159,9 +168,8 @@ public class LoginService {
         }
     }
 
-    private Member findMemberBySocialId(CustomMemberDetails loginMember) {
-        String socialId = loginMember.getUsername();
-        return memberRepository.findBySocialId(socialId).orElseThrow(
+    private Member findMember(Long id) {
+        return memberRepository.findById(id).orElseThrow(
                 () -> new BusinessException(MEMBER_NOT_FOUND));
     }
 

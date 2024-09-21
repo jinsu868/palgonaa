@@ -42,13 +42,13 @@ public class LoginController {
             consumes = {MediaType.MULTIPART_FORM_DATA_VALUE})
     @Operation(summary = "회원 가입 api", description = "닉네임, 프로필을 받아서 회원가입을 진행한다.")
     public ResponseEntity<Void> create(
-            @AuthenticationPrincipal CustomMemberDetails member,
+            @AuthenticationPrincipal CustomMemberDetails loginMember,
             @RequestPart MemberCreateRequestWithoutImage request,
             @RequestPart(required = false) MultipartFile file
     ) {
 
         MemberCreateRequest memberCreateRequest = MemberCreateRequest.of(request, file);
-        Long memberId = loginService.signUp(member, memberCreateRequest);
+        Long memberId = loginService.signUp(loginMember.getMember(), memberCreateRequest);
 
         return ResponseEntity.created(URI.create("/members/" + memberId))
                 .build();

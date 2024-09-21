@@ -11,11 +11,12 @@ import com.palgona.palgona.common.annotation.DistributedLock;
 import com.palgona.palgona.common.error.exception.BusinessException;
 import com.palgona.palgona.bidding.domain.Bidding;
 import com.palgona.palgona.member.domain.Member;
+import com.palgona.palgona.mileage.domain.Mileage;
+import com.palgona.palgona.mileage.domain.MileageRepository;
 import com.palgona.palgona.product.domain.Product;
 import com.palgona.palgona.purchase.domain.Purchase;
 import com.palgona.palgona.bidding.domain.BiddingRepository;
 import com.palgona.palgona.purchase.infrastructure.PurchaseRepository;
-import com.palgona.palgona.member.domain.MemberRepository;
 import com.palgona.palgona.product.domain.ProductRepository;
 import jakarta.transaction.Transactional;
 import java.util.HashSet;
@@ -33,7 +34,7 @@ public class BiddingService {
     private final BiddingRepository biddingRepository;
     private final ProductRepository productRepository;
     private final PurchaseRepository purchaseRepository;
-    private final MemberRepository memberRepository;
+    private final MileageRepository mileageRepository;
 
     @DistributedLock(key = "#productId")
     public void attemptBidding(
@@ -42,34 +43,39 @@ public class BiddingService {
             int attemptPrice
     ) {
         Product product = findProduct(productId);
-        biddingMember = findMemberByIdWithPessimisticLock(biddingMember.getId());
+        Mileage mileage = findMileageWithPessimisticLock(biddingMember);
 
         validateProductDeadline(product);
         validateBiddingCreate(attemptPrice, product, biddingMember);
 
+        Optional<Bidding> highestBeforeBidding = biddingRepository.findHighestBeforeBiddingByMember(
+                biddingMember.getId()
+        );
+
         int previousBid = product.getCurrentPrice();
+
+        if (highestBeforeBidding.isPresent()) {
+            previousBid = highestBeforeBidding.get().getPrice();
+        }
+
         int extraCost = attemptPrice - previousBid;
 
-        biddingMember.useMileage(extraCost);
+        mileage.use(extraCost);
         product.updatePrice(attemptPrice);
-        Bidding bidding = Bidding.builder()
-                .member(biddingMember)
-                .product(product)
-                .price(attemptPrice)
-                .build();
+
+        Bidding bidding = Bidding.of(
+                product,
+                biddingMember,
+                attemptPrice
+        );
 
         biddingRepository.save(bidding);
     }
 
-    private Member findMemberByIdWithPessimisticLock(Long id) {
-        return memberRepository.findByIdWithPessimisticLock(id)
-                        .orElseThrow(() -> new BusinessException(MEMBER_NOT_FOUND));
-    }
-
     public Page<Bidding> findAllByProductId(long productId, Pageable pageable) {
-        Product product = productRepository.findById(productId)
-                .orElseThrow(() -> new BusinessException(NOT_FOUND));
+        Product product = findProduct(productId);
 
+        //TODO: performance tuning, -> no-offset
         return biddingRepository.findAllByProduct(pageable, product);
     }
 
@@ -106,8 +112,8 @@ public class BiddingService {
                     continue;
                 }
 
-                losingMember = findMemberByIdWithPessimisticLock(losingMember.getId());
-                losingMember.refundMileage(failedBidding.getPrice());
+                Mileage mileage = findMileageWithPessimisticLock(losingMember);
+                mileage.refund(failedBidding.getPrice());
                 failedBidding.fail();
                 biddingMembers.add(losingMember);
             }
@@ -120,12 +126,14 @@ public class BiddingService {
             Member biddingMember
     ) {
         Optional<Bidding> highestBidding = biddingRepository.findHighestPriceBiddingByProduct(product);
+
         int highestPrice = product.getCurrentPrice();
 
         if (highestBidding.isPresent()) {
             validateDuplicateBidding(highestBidding.get(), biddingMember);
         }
 
+        //TODO: refactor
         int threshold = (int) Math.pow(10, String.valueOf(attemptPrice).length() - 2);
         int priceDifference = attemptPrice -  highestPrice;
 
@@ -156,5 +164,10 @@ public class BiddingService {
     private Product findProduct(Long productId) {
         return productRepository.findById(productId)
                 .orElseThrow(() -> new BusinessException(NOT_FOUND));
+    }
+
+    private Mileage findMileageWithPessimisticLock(Member biddingMember) {
+        return mileageRepository.findByMemberWithPessimisticLock(biddingMember)
+                .orElseThrow(() -> new BusinessException(MEMBER_NOT_FOUND));
     }
 }

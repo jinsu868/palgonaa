@@ -15,39 +15,41 @@ import org.springframework.stereotype.Repository;
 @Repository
 public class MemberRepositoryImpl implements MemberRepositoryCustom {
 
-    private static final int PAGE_SIZE = 20;
-
     private final JPAQueryFactory queryFactory;
 
     @Override
-    public SliceResponse<MemberResponse> findAllOrderByIdDesc(String cursor) {
-        List<MemberResponse> members = queryFactory.select(Projections.constructor(MemberResponse.class,
+    public SliceResponse<MemberResponse> findAllOrderByIdDesc(Long cursor, int pageSize) {
+        List<MemberResponse> members = queryFactory.select(
+                Projections.constructor(MemberResponse.class,
                         member.id,
                         member.nickName,
                         member.profileImage))
                 .from(member)
                 .where(ltMemberId(cursor))
                 .orderBy(member.id.desc())
-                .limit(PAGE_SIZE + 1)
+                .limit(pageSize + 1)
                 .fetch();
 
-        return convertToSlice(members);
+        return convertToSlice(members, pageSize);
     }
 
-    private BooleanExpression ltMemberId(String cursor) {
+    private BooleanExpression ltMemberId(Long cursor) {
         if (cursor != null) {
-            return member.id.lt(Long.valueOf(cursor));
+            return member.id.lt(cursor);
         }
 
         return null;
     }
 
-    private SliceResponse<MemberResponse> convertToSlice(List<MemberResponse> members) {
+    private SliceResponse<MemberResponse> convertToSlice(
+            List<MemberResponse> members,
+            int pageSize
+    ) {
         if (members.isEmpty()) {
             return SliceResponse.of(members, false, null);
         }
 
-        boolean hasNext = existNextPage(members);
+        boolean hasNext = existNextPage(members, pageSize);
         String nextCursor = generateCursor(members);
         return SliceResponse.of(members, hasNext, nextCursor);
     }
@@ -57,9 +59,9 @@ public class MemberRepositoryImpl implements MemberRepositoryCustom {
         return String.valueOf(lastMember.id());
     }
 
-    private boolean existNextPage(List<MemberResponse> members) {
-        if (members.size() > PAGE_SIZE) {
-            members.remove(PAGE_SIZE);
+    private boolean existNextPage(List<MemberResponse> members, int pageSize) {
+        if (members.size() > pageSize) {
+            members.remove(pageSize);
             return true;
         }
 

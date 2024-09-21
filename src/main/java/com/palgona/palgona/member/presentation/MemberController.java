@@ -32,9 +32,9 @@ public class MemberController {
     @GetMapping("/my")
     @Operation(summary = "본인 정보 조회 api", description = "본인의 프로필 정보를 조회한다.")
     public ResponseEntity<MemberDetailResponse> findMyProfile(
-            @AuthenticationPrincipal CustomMemberDetails member
+            @AuthenticationPrincipal CustomMemberDetails loginMember
     ) {
-        MemberDetailResponse response = memberService.findMyProfile(member);
+        MemberDetailResponse response = memberService.findMyProfile(loginMember.getMember());
 
         return ResponseEntity.ok(response);
     }
@@ -44,8 +44,8 @@ public class MemberController {
     public ResponseEntity<MemberResponse> findById(
             @PathVariable Long memberId
     ) {
-
         MemberResponse response = memberService.findById(memberId);
+
         return ResponseEntity.ok(response);
     }
 
@@ -53,25 +53,27 @@ public class MemberController {
     @Operation(summary = "맴버 리스트 조회 api",
             description = "첫번째 요청에는 cursor에 값 세팅 X, 두번째 요청부터 이전 응답의 cursor를 파싱해서 넣으면 된다.")
     public ResponseEntity<SliceResponse<MemberResponse>> findAll(
-            @RequestParam(required = false) String cursor) {
+            @RequestParam(required = false) Long cursor,
+            @RequestParam(required = false) int pageSize
+    ) {
+        SliceResponse<MemberResponse> response = memberService.findAllMember(cursor, pageSize);
 
-        SliceResponse<MemberResponse> response = memberService.findAllMember(cursor);
         return ResponseEntity.ok(response);
     }
 
     @PutMapping(consumes = {MediaType.APPLICATION_JSON_VALUE, MediaType.MULTIPART_FORM_DATA_VALUE})
     @Operation(summary = "맴버 정보 수정 api", description = "닉네임과 프로필 이미지를 받아서 맴버 정보를 수정한다.")
     public ResponseEntity<Void> update(
-            @AuthenticationPrincipal CustomMemberDetails member,
+            @AuthenticationPrincipal CustomMemberDetails loginMember,
             @RequestPart(required = false) MultipartFile file,
             @RequestPart MemberUpdateRequestWithoutImage request
     ) {
 
-        memberService.update(member, MemberUpdateRequest.of(request, file));
+        memberService.update(loginMember.getMember(), MemberUpdateRequest.of(request, file));
 
         return ResponseEntity.ok()
                 .header("Location", "/api/v1/members/"
-                + member.getMember().getId())
+                + loginMember.getMember().getId())
                 .build();
     }
 }

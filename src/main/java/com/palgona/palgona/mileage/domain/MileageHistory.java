@@ -4,7 +4,6 @@ import com.palgona.palgona.common.entity.BaseTimeEntity;
 import com.palgona.palgona.member.domain.Member;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
-import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
@@ -33,8 +32,23 @@ public class MileageHistory extends BaseTimeEntity {
     @JoinColumn(name = "member_id", nullable = false)
     private Member member;
 
-    @Builder
-    MileageHistory(
+    public static MileageHistory of(
+            int beforeMileage,
+            int afterMileage,
+            int amount,
+            MileageState state,
+            Member member
+    ) {
+        return new MileageHistory(
+                beforeMileage,
+                afterMileage,
+                amount,
+                state,
+                member
+        );
+    }
+
+    private MileageHistory(
             int beforeMileage,
             int afterMileage,
             int amount,

@@ -41,8 +41,19 @@ public class Bidding extends BaseTimeEntity {
     @Column(name = "state")
     private BiddingState state;
 
-    @Builder
-    Bidding(Product product, Member member, int price) {
+    public static Bidding of(
+            Product product,
+            Member member,
+            int price
+    ) {
+        return new Bidding(
+                product,
+                member,
+                price
+        );
+    }
+
+    private Bidding(Product product, Member member, int price) {
         this.product = product;
         this.member = member;
         this.price = price;

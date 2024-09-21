@@ -10,7 +10,9 @@ import com.palgona.palgona.common.dto.response.SliceResponse;
 import com.palgona.palgona.common.error.exception.BusinessException;
 import com.palgona.palgona.member.domain.Member;
 import com.palgona.palgona.member.domain.MemberRepository;
+import com.palgona.palgona.mileage.domain.Mileage;
 import com.palgona.palgona.mileage.domain.MileageHistory;
+import com.palgona.palgona.mileage.domain.MileageRepository;
 import com.palgona.palgona.mileage.domain.MileageState;
 import com.palgona.palgona.purchase.domain.Purchase;
 import com.palgona.palgona.purchase.domain.PurchaseState;
@@ -34,10 +36,19 @@ public class PurchaseService {
 
     private final PurchaseRepository purchaseRepository;
     private final MileageHistoryRepository mileageHistoryRepository;
+    private final MileageRepository mileageRepository;
     private final MemberRepository memberRepository;
 
-    public SliceResponse<PurchaseResponse> readPurchases(Member member, int pageSize, String cursor) {
-        return purchaseRepository.findAllByMember(member, pageSize, cursor);
+    public SliceResponse<PurchaseResponse> readPurchases(
+            Member member,
+            int pageSize,
+            Long cursor
+    ) {
+        return purchaseRepository.findAllByMember(
+                member,
+                pageSize,
+                cursor
+        );
     }
 
     @Transactional
@@ -48,25 +59,28 @@ public class PurchaseService {
         validateDeadline(purchase);
 
         purchase.confirm();
-        Member seller = findMemberWithPessimisticLock(purchase.getSeller().getId());
+
+        Mileage sellerMileage = findMileageWithPessimisticLock(purchase.getSeller());
         int purchaseAmount = purchase.getPurchasePrice();
-        seller.receivePayment(purchaseAmount);
+        int buyerBalance = mileageRepository.findBalanceByMember(buyer);
 
-        mileageHistoryRepository.save(MileageHistory.builder()
-                .beforeMileage(seller.getMileage() - purchaseAmount)
-                .afterMileage(seller.getMileage())
-                .amount(purchaseAmount)
-                .state(MileageState.SALE)
-                .member(seller)
-                .build());
+        mileageHistoryRepository.save(MileageHistory.of(
+                sellerMileage.getBalance(),
+                sellerMileage.getBalance() + purchaseAmount,
+                purchaseAmount,
+                MileageState.SALE,
+                purchase.getSeller())
+        );
 
-        mileageHistoryRepository.save(MileageHistory.builder()
-                .beforeMileage(buyer.getMileage() + purchaseAmount)
-                .afterMileage(buyer.getMileage())
-                .amount(purchaseAmount)
-                .state(MileageState.USE)
-                .member(buyer)
-                .build());
+        sellerMileage.charge(purchaseAmount);
+
+        mileageHistoryRepository.save(MileageHistory.of(
+                buyerBalance + purchaseAmount,
+                buyerBalance,
+                purchaseAmount,
+                MileageState.USE,
+                buyer
+        ));
     }
 
     @Transactional
@@ -76,7 +90,7 @@ public class PurchaseService {
             PurchaseCancelRequest request
     ) {
         Purchase purchase = findPurchaseWithBidding(id);
-        Member buyer = findMemberWithPessimisticLock(member.getId());
+        Mileage buyerMileage = findMileageWithPessimisticLock(member);
 
         validatePurchasePermission(purchase, member);
         validatePurchaseCancel(purchase);
@@ -86,18 +100,7 @@ public class PurchaseService {
         purchase.getBidding().cancel();
 
         int refundAmount = calculateRefundAmount(purchase);
-        buyer.refundMileage(refundAmount);
-    }
-
-    private void validatePurchaseCancel(Purchase purchase) {
-        validateDeadline(purchase);
-        validatePurchaseStatusForCancel(purchase);
-    }
-
-    private void validatePurchaseStatusForCancel(Purchase purchase) {
-        if (!purchase.isWaitState()) {
-            throw new BusinessException(PURCHASE_CANCEL_NOT_ALLOWED);
-        }
+        buyerMileage.refund(refundAmount);
     }
 
     @Transactional
@@ -107,13 +110,14 @@ public class PurchaseService {
 
         for (Purchase expiredPurchase : expiredPurchases) {
             purchaseCanceledIds.add(expiredPurchase.getId());
-            Member buyer = findMemberWithPessimisticLock(expiredPurchase.getBuyer().getId());
+            Mileage buyerMileage = findMileageWithPessimisticLock(expiredPurchase.getBuyer());
+
             expiredPurchase.getBidding().cancel();
 
             int refundAmount = calculateRefundAmount(expiredPurchase);
-            buyer.refundMileage(refundAmount);
+            buyerMileage.refund(refundAmount);
 
-            memberRepository.saveAndFlush(buyer);
+            mileageRepository.saveAndFlush(buyerMileage);
             purchaseRepository.saveAndFlush(expiredPurchase);
         }
 
@@ -141,14 +145,25 @@ public class PurchaseService {
         }
     }
 
-    private Member findMemberWithPessimisticLock(Long memberId) {
-        return memberRepository.findByIdWithPessimisticLock(memberId)
-                .orElseThrow(() -> new BusinessException(MEMBER_NOT_FOUND));
-    }
-
     private void validatePurchasePermission(Purchase purchase, Member member) {
         if (!purchase.isBuyer(member)) {
             throw new BusinessException(INSUFFICIENT_PERMISSION);
+        }
+    }
+
+    private Mileage findMileageWithPessimisticLock(Member member) {
+        return mileageRepository.findByMemberWithPessimisticLock(member)
+                .orElseThrow(() -> new BusinessException(MEMBER_NOT_FOUND));
+    }
+
+    private void validatePurchaseCancel(Purchase purchase) {
+        validateDeadline(purchase);
+        validatePurchaseStatusForCancel(purchase);
+    }
+
+    private void validatePurchaseStatusForCancel(Purchase purchase) {
+        if (!purchase.isWaitState()) {
+            throw new BusinessException(PURCHASE_CANCEL_NOT_ALLOWED);
         }
     }
 }

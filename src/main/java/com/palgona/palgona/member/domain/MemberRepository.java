@@ -13,8 +13,4 @@ public interface MemberRepository extends JpaRepository<Member, Long>, MemberRep
     boolean existsByNickName(String nickName);
 
     Optional<Member> findBySocialId(String socialId);
-
-    @Lock(LockModeType.PESSIMISTIC_WRITE)
-    @Query("select m from Member m where m.id = :id")
-    Optional<Member> findByIdWithPessimisticLock(Long id);
 }

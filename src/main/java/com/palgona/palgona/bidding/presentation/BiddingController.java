@@ -42,8 +42,10 @@ public class BiddingController {
 
     @GetMapping("/{productId}")
     @Operation(summary = "입찰 목록 api", description = "물건 id를 받아서 입찰 목록을 보여준다.")
-    public ResponseEntity<BiddingPageResponse> findAllByProductId(@PathVariable long productId,
-                                                            @PageableDefault(size = 20) Pageable pageable) {
+    public ResponseEntity<BiddingPageResponse> findAllByProductId(
+            @PathVariable long productId,
+            @PageableDefault(size = 20) Pageable pageable
+    ) {
         Page<Bidding> biddings =  biddingService.findAllByProductId(productId, pageable);
         BiddingPageResponse response = BiddingPageResponse.of(biddings);
 

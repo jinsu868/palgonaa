@@ -13,6 +13,7 @@ import com.palgona.palgona.member.dto.response.MemberDetailResponse;
 import com.palgona.palgona.member.dto.response.MemberResponse;
 import com.palgona.palgona.member.dto.request.MemberUpdateRequest;
 import com.palgona.palgona.member.domain.MemberRepository;
+import com.palgona.palgona.mileage.domain.MileageRepository;
 import com.palgona.palgona.product.event.ImageUploadEvent;
 import java.util.ArrayList;
 import java.util.List;
@@ -26,37 +27,33 @@ import org.springframework.transaction.annotation.Transactional;
 public class MemberService {
 
     private final MemberRepository memberRepository;
+    private final MileageRepository mileageRepository;
     private final S3Service s3Service;
     private final ApplicationEventPublisher publisher;
 
-    public MemberDetailResponse findMyProfile(CustomMemberDetails loginMember) {
-        Member member = loginMember.getMember();
+    public MemberDetailResponse findMyProfile(Member member) {
+        Integer balance = mileageRepository.findBalanceByMember(member);
 
-        return MemberDetailResponse.from(member);
+        return MemberDetailResponse.of(member, balance);
     }
 
     public MemberResponse findById(Long id) {
-        Member member = memberRepository.findById(id)
-                .orElseThrow(() -> new BusinessException(MEMBER_NOT_EXIST));
+        Member member = findMember(id);
 
         return MemberResponse.from(member);
     }
 
-    public SliceResponse<MemberResponse> findAllMember(String cursor) {
-        return memberRepository.findAllOrderByIdDesc(cursor);
+    public SliceResponse<MemberResponse> findAllMember(Long cursor, int pageSize) {
+        return memberRepository.findAllOrderByIdDesc(cursor, pageSize);
     }
 
     @Transactional
     public void update(
-            CustomMemberDetails loginMember,
+            Member member,
             MemberUpdateRequest memberUpdateRequest
     ) {
-
-        String socialId = loginMember.getUsername();
-        Member member = memberRepository.findBySocialId(socialId)
-                .orElseThrow(() -> new BusinessException(MEMBER_NOT_FOUND));
-
         List<ImageUploadRequest> uploadRequests = new ArrayList<>();
+
         String uploadFileName = FileUtils.createFileName(memberUpdateRequest.image().getOriginalFilename());
         String imageUrl = s3Service.generateS3FileUrl(uploadFileName);
         uploadRequests.add(ImageUploadRequest.of(memberUpdateRequest.image(), uploadFileName));
@@ -65,5 +62,10 @@ public class MemberService {
         member.updateProfileImage(imageUrl);
 
         publisher.publishEvent(ImageUploadEvent.from(uploadRequests));
+    }
+
+    private Member findMember(Long id) {
+        return memberRepository.findById(id)
+                .orElseThrow(() -> new BusinessException(MEMBER_NOT_EXIST));
     }
 }

@@ -5,5 +5,5 @@ import com.palgona.palgona.member.dto.response.MemberResponse;
 
 public interface MemberRepositoryCustom {
 
-    SliceResponse<MemberResponse> findAllOrderByIdDesc(String cursor);
+    SliceResponse<MemberResponse> findAllOrderByIdDesc(Long cursor, int pageSize);
 }
