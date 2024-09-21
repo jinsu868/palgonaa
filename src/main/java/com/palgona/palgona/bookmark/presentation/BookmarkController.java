@@ -47,7 +47,11 @@ public class BookmarkController {
             @RequestParam(required = false, defaultValue = "0") int cursor,
             @RequestParam(defaultValue = "20") int size){
 
-        SliceResponse<BookmarkProductsResponse> responses = bookmarkService.readALlBookmark(memberDetails, cursor, size);
+        SliceResponse<BookmarkProductsResponse> responses = bookmarkService.readALlBookmark(
+                memberDetails.getMember(),
+                cursor,
+                size
+        );
 
         return ResponseEntity.ok(responses);
     }

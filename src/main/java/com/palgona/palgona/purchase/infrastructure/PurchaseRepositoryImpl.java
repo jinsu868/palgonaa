@@ -27,7 +27,11 @@ public class PurchaseRepositoryImpl implements PurchaseRepositoryCustom {
     private final JPAQueryFactory queryFactory;
 
     @Override
-    public SliceResponse<PurchaseResponse> findAllByMember(Member member, int pageSize, String cursor) {
+    public SliceResponse<PurchaseResponse> findAllByMember(
+            Member member,
+            int pageSize,
+            Long cursor
+    ) {
         List<PurchaseQueryResponse> purchaseQueryResponses = queryFactory.select(Projections.constructor(
                         PurchaseQueryResponse.class,
                         purchase.id,
@@ -104,7 +108,7 @@ public class PurchaseRepositoryImpl implements PurchaseRepositoryCustom {
         purchases.remove(pageSize);
     }
 
-    private BooleanExpression ltPurchaseId(String cursor) {
+    private BooleanExpression ltPurchaseId(Long cursor) {
         if (cursor != null) {
             return purchase.id.lt(Long.valueOf(cursor));
         }
