@@ -1,12 +1,9 @@
 package com.palgona.palgona.product.infrastructure;
 
-import static com.palgona.palgona.bookmark.domain.QBookmark.bookmark;
-import static com.palgona.palgona.chat.domain.QChatRoom.chatRoom;
 import static com.palgona.palgona.image.domain.QImage.image;
 import static com.palgona.palgona.member.domain.QMember.member;
 import static com.palgona.palgona.product.domain.QProduct.product;
 import static com.palgona.palgona.product.domain.QProductImage.productImage;
-import static com.querydsl.core.types.ExpressionUtils.count;
 
 import com.palgona.palgona.common.dto.response.SliceResponse;
 import com.palgona.palgona.product.domain.Category;
@@ -16,12 +13,10 @@ import com.palgona.palgona.product.dto.response.ProductPageResponse;
 import com.palgona.palgona.product.infrastructure.querydto.ImageQueryResponse;
 import com.palgona.palgona.product.infrastructure.querydto.ProductDetailQueryResponse;
 import com.palgona.palgona.product.infrastructure.querydto.ProductQueryResponse;
-import com.querydsl.core.types.ExpressionUtils;
 import com.querydsl.core.types.Order;
 import com.querydsl.core.types.OrderSpecifier;
 import com.querydsl.core.types.Projections;
 import com.querydsl.core.types.dsl.BooleanExpression;
-import com.querydsl.jpa.JPAExpressions;
 import com.querydsl.jpa.impl.JPAQueryFactory;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -35,7 +30,6 @@ import org.springframework.stereotype.Repository;
 @RequiredArgsConstructor
 @Repository
 public class ProductRepositoryImpl implements ProductRepositoryCustom {
-
     private final JPAQueryFactory queryFactory;
 
     @Override
@@ -52,19 +46,8 @@ public class ProductRepositoryImpl implements ProductRepositoryCustom {
                 member.id,
                 member.nickName,
                 member.profileImage,
-                product.currentPrice,
-                ExpressionUtils.as(
-                        JPAExpressions.select(count(bookmark.id))
-                                .from(bookmark)
-                                .where(bookmark.product.id.eq(productId)),
-                        "bookmarkCount"
-                ),
-                ExpressionUtils.as(
-                        JPAExpressions.select(count(chatRoom.id))
-                                .from(chatRoom)
-                                .where(chatRoom.product.id.eq(productId)),
-                        "chatRoomCount"
-                )))
+                product.currentPrice
+                ))
                 .from(product)
                 .join(product.member, member)
                 .where(product.id.eq(productId)
@@ -87,20 +70,18 @@ public class ProductRepositoryImpl implements ProductRepositoryCustom {
                         product.id,
                         product.name,
                         product.currentPrice,
-                        ExpressionUtils.as(
-                                JPAExpressions.select(bookmark.count())
-                                        .from(bookmark)
-                                        .where(bookmark.product.eq(product)),
-                                "bookmarkCount"
-                        ),
                         product.deadline,
                         product.createdAt
                 ))
                 .from(product)
-                .where(contains(searchWord), categoryEq(category), isInSearchRange(cursor, sortType))
+                .where(
+                        contains(searchWord),
+                        categoryEq(category),
+                        isInSearchRange(cursor, sortType),
+                        stateIsNotDeleted()
+                )
                 .orderBy(createOrderSpecifier(sortType))
                 .limit(pageSize + 1)
-                .setHint("javax.persistence.query.forceIndex", "idx_current_price_id")
                 .fetch();
 
         List<ImageQueryResponse> imageQueryResponses = queryFactory.select(Projections.constructor(
@@ -183,8 +164,6 @@ public class ProductRepositoryImpl implements ProductRepositoryCustom {
         return switch (sortType) {
             case DEADLINE -> String.valueOf(lastProduct.deadline());
             case HIGHEST_PRICE, LOWEST_PRICE -> String.format("%09d", lastProduct.currentBid())
-                    + String.format("%09d", lastProduct.id());
-            case BOOK_MARK -> String.format("%09d", lastProduct.bookmarkCount())
                     + String.format("%09d", lastProduct.id());
             default -> String.valueOf(lastProduct.id());
         };
