@@ -24,7 +24,6 @@ import com.palgona.palgona.image.domain.ImageRepository;
 import com.palgona.palgona.product.domain.ProductRepository;
 import com.palgona.palgona.product.event.ImageUploadEvent;
 import com.palgona.palgona.product.infrastructure.querydto.ProductDetailQueryResponse;
-import com.palgona.palgona.product.infrastructure.querydto.ProductQueryResponse;
 import java.util.ArrayList;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;

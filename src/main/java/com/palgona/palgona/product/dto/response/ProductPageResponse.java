@@ -7,7 +7,6 @@ public record ProductPageResponse(
         Long id,
         String name,
         int currentBid,
-        Long bookmarkCount,
         LocalDateTime deadline,
         LocalDateTime created_at,
         String imageUrl
@@ -18,7 +17,6 @@ public record ProductPageResponse(
                 queryResponse.id(),
                 queryResponse.name(),
                 queryResponse.currentBid(),
-                queryResponse.bookmarkCount(),
                 queryResponse.deadline(),
                 queryResponse.createdAt(),
                 imageUrl

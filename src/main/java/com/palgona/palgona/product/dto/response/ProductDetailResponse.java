@@ -17,8 +17,6 @@ public record ProductDetailResponse(
         String ownerName,
         String ownerImgUrl,
         Integer highestPrice,
-        Long bookmarkCount,
-        Long chatroomCount,
         List<String> imageUrls
 ) {
     public static ProductDetailResponse of(
@@ -37,8 +35,6 @@ public record ProductDetailResponse(
                 queryResponse.ownerName(),
                 queryResponse.ownerImgUrl(),
                 queryResponse.highestBid(),
-                queryResponse.bookmarkCount(),
-                queryResponse.chatroomCount(),
                 files
         );
     }
