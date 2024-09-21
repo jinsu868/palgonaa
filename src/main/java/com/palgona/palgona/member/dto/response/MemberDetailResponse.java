@@ -8,11 +8,11 @@ public record MemberDetailResponse(
         int mileage,
         String profileImage
 ) {
-    public static MemberDetailResponse from(Member member) {
+    public static MemberDetailResponse of(Member member, int balance) {
         return new MemberDetailResponse(
                 member.getId(),
                 member.getNickName(),
-                member.getMileage(),
+                balance,
                 member.getProfileImage()
         );
     }
