@@ -15,7 +15,6 @@ import java.util.List;
 @Entity
 @Getter
 @NoArgsConstructor
-@Table(name = "chat_room")
 public class ChatRoom extends BaseTimeEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -39,14 +38,17 @@ public class ChatRoom extends BaseTimeEntity {
     @JoinColumn(name = "receiver_id", nullable = false)
     private Member receiver;
 
-    @OneToMany(fetch = FetchType.LAZY)
-    private List<ChatMessage> chatMessages;
+    public static ChatRoom of(
+            Member sender,
+            Member receiver
+    ) {
+        return new ChatRoom(
+                sender,
+                receiver
+        );
+    }
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    private Product product;
-
-    @Builder
-    ChatRoom(Member sender, Member receiver){
+    private ChatRoom(Member sender, Member receiver){
         this.sender = sender;
         this.receiver = receiver;
         this.isLeaveSender = false;
@@ -54,7 +56,30 @@ public class ChatRoom extends BaseTimeEntity {
     }
 
     public boolean hasMember(Member member) {
-        return member.equals(sender) || member.equals(receiver);
+        return (member.getId() == sender.getId() && !isLeaveSender) ||
+                (member.getId() == receiver.getId() && !isLeaveReceiver);
+    }
+
+    public Member getPartner(Member sender) {
+        if (sender.getId() == this.sender.getId()) {
+            return receiver;
+        }
+        return sender;
+    }
+
+    public boolean isReceiver(Member member) {
+        if (member.getId() == receiver.getId()) {
+            return true;
+        }
+        return false;
+    }
+
+    public void leaveReceiver() {
+        isLeaveReceiver = true;
+    }
+
+    public void leaveSender() {
+        isLeaveSender = true;
     }
 }
 

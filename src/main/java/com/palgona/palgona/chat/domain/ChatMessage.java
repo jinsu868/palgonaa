@@ -11,19 +11,14 @@ import lombok.NoArgsConstructor;
 @Entity
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-@Table(name = "chat_message")
 public class ChatMessage extends BaseTimeEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(length = 1000)
+    @Column(length = 1024)
     private String message;
-
-    @Enumerated(EnumType.STRING)
-    @Column(name = "type", nullable = false)
-    private ChatType type;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "room_id", nullable = false)
@@ -37,12 +32,28 @@ public class ChatMessage extends BaseTimeEntity {
     @JoinColumn(name = "sender_id", nullable = false)
     private Member sender;
 
-    @Builder
-    ChatMessage(String message, ChatRoom room, Member receiver, Member sender, ChatType type){
+    public static ChatMessage of(
+            String message,
+            ChatRoom chatRoom,
+            Member sender,
+            Member receiver
+    ) {
+        return new ChatMessage(
+                message,
+                chatRoom,
+                sender,
+                receiver
+        );
+    }
+    private ChatMessage(
+            String message,
+            ChatRoom chatRoom,
+            Member receiver,
+            Member sender
+    ){
         this.message = message;
-        this.room = room;
+        this.room = chatRoom;
         this.receiver = receiver;
         this.sender = sender;
-        this.type = type;
     }
 }

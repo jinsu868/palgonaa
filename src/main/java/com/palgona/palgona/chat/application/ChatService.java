@@ -1,168 +1,136 @@
 package com.palgona.palgona.chat.application;
 
-import com.palgona.palgona.common.error.code.ChatErrorCode;
-import com.palgona.palgona.common.error.code.MemberErrorCode;
+import static com.palgona.palgona.common.error.code.ChatErrorCode.*;
+import static com.palgona.palgona.common.error.code.MemberErrorCode.*;
+
+import com.palgona.palgona.chat.dto.response.ChatMessageResponse;
+import com.palgona.palgona.chat.infrastructure.RedisSubscriber;
 import com.palgona.palgona.common.error.exception.BusinessException;
 import com.palgona.palgona.chat.domain.ChatMessage;
-import com.palgona.palgona.chat.domain.ChatReadStatus;
 import com.palgona.palgona.chat.domain.ChatRoom;
-import com.palgona.palgona.chat.domain.ChatType;
 import com.palgona.palgona.member.domain.Member;
 import com.palgona.palgona.chat.dto.request.ChatMessageRequest;
-import com.palgona.palgona.chat.dto.response.ChatRoomCountResponse;
 import com.palgona.palgona.chat.dto.request.ChatRoomCreateRequest;
-import com.palgona.palgona.chat.dto.request.ReadMessageRequest;
 import com.palgona.palgona.chat.domain.ChatMessageRepository;
-import com.palgona.palgona.chat.domain.ChatReadStatusRepository;
 import com.palgona.palgona.chat.domain.ChatRoomRepository;
 import com.palgona.palgona.member.domain.MemberRepository;
-import com.palgona.palgona.image.domain.S3Client;
-import jakarta.transaction.Transactional;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.data.redis.listener.ChannelTopic;
+import org.springframework.data.redis.listener.RedisMessageListenerContainer;
 import org.springframework.stereotype.Service;
 
-import java.util.Arrays;
 import java.util.List;
-import org.springframework.web.multipart.MultipartFile;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
 public class ChatService {
+
+    private static final String CHANNEL_NAME_PREFIX = "chat-channel:";
     private final ChatRoomRepository chatRoomRepository;
     private final ChatMessageRepository chatMessageRepository;
     private final MemberRepository memberRepository;
-    private final ChatReadStatusRepository chatReadStatusRepository;
-    private final S3Client s3Client;
+    private final RedisSubscriber redisSubscriber;
+    private final RedisMessageListenerContainer redisMessageListenerContainer;
+    private final Map<Long, ChannelTopic> topics = new ConcurrentHashMap<>();
+    private final RedisTemplate redisTemplate;
 
-    @Transactional
-    public ChatMessage sendMessage(ChatMessageRequest messageDto) {
-        // 있는 멤버와 채팅방인지 확인
-        Member sender = findMember(messageDto.senderId());
-        Member receiver = findMember(messageDto.receiverId());
-        ChatRoom room = findChatRoom(messageDto.roomId());
+    public ChatMessage sendMessage(ChatMessageRequest chatMessageRequest) {
+        ChatRoom room = findChatRoom(chatMessageRequest.roomId());
+        Member sender = findMember(chatMessageRequest.senderId());
+        Member receiver = room.getPartner(sender);
 
-        // 송신자, 수신자 모두 채팅방에 존재하는지 확인
-        if (!(room.hasMember(sender) && room.hasMember(receiver))) {
-            throw new BusinessException(ChatErrorCode.INVALID_MEMBER);
+        validateMemberInRoom(room, sender);
+
+        ChannelTopic topic = topics.get(getChannelName(room.getId()));
+        if (topic == null) {
+            topic = ChannelTopic.of(getChannelName(room.getId()));
+            redisMessageListenerContainer.addMessageListener(redisSubscriber, topic);
+            topics.put(room.getId(), topic);
         }
 
-        ChatType messageType = ChatType.TEXT;
-        String messageContent = messageDto.message();
+        ChatMessage chatMessage = ChatMessage.of(
+                chatMessageRequest.content(),
+                room,
+                sender,
+                receiver
+        );
 
-        if (messageDto.imgData() != null && !messageDto.imgData().isEmpty()) {
-            // imgData가 있는 경우 S3에 업로드
-            messageContent = s3Client.uploadBase64Image(messageDto.imgData());
-            messageType = ChatType.IMAGE;
-        }
-
-        ChatMessage message = ChatMessage.builder()
-                .sender(sender)
-                .receiver(receiver)
-                .message(messageContent)
-                .room(room)
-                .type(messageType)
-                .build();
-
-        return chatMessageRepository.save(message);
+        redisTemplate.convertAndSend(getChannelName(room.getId()), chatMessageRequest);
+        return chatMessageRepository.save(chatMessage);
     }
 
-    public ChatRoom createRoom(Member sender, ChatRoomCreateRequest request) {
+    public Long createRoom(
+            Member sender,
+            ChatRoomCreateRequest request
+    ) {
         Member receiver = findMember(request.visitorId());
-        ChatRoom room = findOrCreateChatRoom(sender, receiver);
-        ChatReadStatus receiverStatus = ChatReadStatus.builder().room(room).member(receiver).build();
-        ChatReadStatus senderStatus = ChatReadStatus.builder().room(room).member(sender).build();
 
-        chatReadStatusRepository.saveAll(Arrays.asList(receiverStatus, senderStatus));
-        return room;
+        validateChatRoomCreate(sender, receiver);
+
+        ChatRoom chatRoom = ChatRoom.of(sender, receiver);
+        chatRoomRepository.save(chatRoom);
+
+        return chatRoom.getId();
     }
 
-    public void readMessage(Member member, ReadMessageRequest request) {
-        // 가장 최근에 읽은 데이터를 표시해야함.
-        // 현재 연결되어서 바로 읽었는지 확인이 필요함.
-        Member receiver = findMember(member.getId());
-        ChatMessage message = chatMessageRepository.findById(request.messageId())
-                .orElseThrow(() -> new BusinessException(ChatErrorCode.MESSAGE_NOT_FOUND));
-        ChatReadStatus chatReadStatus = chatReadStatusRepository.findByMemberAndRoom(receiver, message.getRoom());
-        chatReadStatus.updateCursor(message.getId());
-        chatReadStatusRepository.save(chatReadStatus);
-    }
-
-    public List<ChatRoomCountResponse> getRoomList(Member member) {
-        return chatRoomRepository.countUnreadMessagesInRooms(member);
-    }
-
-    public List<ChatMessage> getMessageByRoom(Member member, Long roomId) {
+    public List<ChatMessageResponse> findMessages(
+            Member member,
+            Long roomId
+    ) {
         ChatRoom room = findChatRoom(roomId);
-        Member receiver = findMember(member.getId());
-        if (!room.hasMember(receiver)) {
-            throw new BusinessException(ChatErrorCode.INVALID_MEMBER);
-        }
-        return chatMessageRepository.findAllByRoom(room);
+
+        validateMemberInRoom(room, member);
+
+        return chatMessageRepository.findAllByRoom(room).stream()
+                .map(ChatMessageResponse::from)
+                .toList();
     }
 
     @Transactional
-    public List<ChatMessage> getUnreadMessagesByRoom(Member member, Long roomId) {
+    public void leaveChatRoom(
+            Long roomId,
+            Member member
+    ){
         ChatRoom room = findChatRoom(roomId);
 
-        // chatReadStatus에 표시된 가장 최근에 읽은 messageId를 cursor로 접근해서 가져옴.
-        ChatReadStatus chatReadStatus = chatReadStatusRepository.findByMemberAndRoom(member, room);
-        if (chatReadStatus == null) {
-            throw new BusinessException(ChatErrorCode.READ_STATUS_NOT_FOUND);
+        validateMemberInRoom(room, member);
+
+        if (room.isReceiver(member)) {
+            room.leaveReceiver();
+        } else {
+            room.leaveSender();
         }
 
-        // 값을 가져온 후 가장 최근 데이터로 다시 업데이트
-        List<ChatMessage> chatMessages = chatMessageRepository.findMessagesAfterCursor(roomId,
-                chatReadStatus.getMessageCursor());
-        chatReadStatus.updateCursor(chatMessages.get(chatMessages.size() - 1).getId());
-        chatReadStatusRepository.save(chatReadStatus);
-
-        return chatMessages;
+        chatRoomRepository.save(room);
     }
 
-    public ChatMessage uploadChatFile(ChatMessageRequest messageDto, MultipartFile file) {
-        Member sender = findMember(messageDto.senderId());
-        Member receiver = findMember(messageDto.receiverId());
-        ChatRoom room = findChatRoom(messageDto.roomId());
-
-        // TOOD: 이미지 업로드 수정
-        String url = s3Client.upload(file, "QWE");
-        ChatMessage message = ChatMessage.builder()
-                .sender(sender)
-                .receiver(receiver)
-                .room(room)
-                .message(url)
-                .type(ChatType.IMAGE)
-                .build();
-        return chatMessageRepository.save(message);
-    }
-
-    public ChatRoom exitChatRoom(Long roomId, Member member){
-        ChatRoom room = findChatRoom(roomId);
-        if (!room.hasMember(member)) {
-            throw new BusinessException(ChatErrorCode.INVALID_MEMBER);
-        }
-        // receiver인지 sender인지 확인후 나감
-        if (room.getReceiver() == member){
-            room.setLeaveReceiver(true);
-        } else if (room.getSender() == member) {
-            room.setLeaveSender(true);
-        }
-
-        return chatRoomRepository.save(room);
-    }
-
-    private Member findMember(Long visitorId) {
-        return memberRepository.findById(visitorId)
-                .orElseThrow(() -> new BusinessException(MemberErrorCode.MEMBER_NOT_EXIST));
+    private Member findMember(Long memberId) {
+        return memberRepository.findById(memberId)
+                .orElseThrow(() -> new BusinessException(MEMBER_NOT_EXIST));
     }
 
     private ChatRoom findChatRoom(Long roomId) {
         return chatRoomRepository.findById(roomId)
-                .orElseThrow(() -> new BusinessException(ChatErrorCode.CHATROOM_NOT_FOUND));
+                .orElseThrow(() -> new BusinessException(CHATROOM_NOT_FOUND));
     }
 
-    private ChatRoom findOrCreateChatRoom(Member sender, Member receiver) {
-        return chatRoomRepository.findBySenderAndReceiver(sender, receiver)
-                .orElseGet(() -> chatRoomRepository.save(ChatRoom.builder().sender(sender).receiver(receiver).build()));
+    private void validateChatRoomCreate(Member sender, Member receiver) {
+        if (chatRoomRepository.existsBySenderAndReceiver(sender, receiver)) {
+            throw new BusinessException(ALREADY_EXISTS_CHAT_ROOM);
+        }
+    }
+
+    private void validateMemberInRoom(ChatRoom room, Member sender) {
+        if (!room.hasMember(sender)) {
+            throw new BusinessException(INVALID_MEMBER);
+        }
+    }
+
+    private String getChannelName(Long roomId) {
+        return CHANNEL_NAME_PREFIX + roomId;
     }
 }

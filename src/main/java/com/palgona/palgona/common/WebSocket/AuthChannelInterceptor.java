@@ -20,9 +20,9 @@ public class AuthChannelInterceptor implements ChannelInterceptor {
     public Message<?> preSend(Message<?> message, MessageChannel channel) {
         StompHeaderAccessor accessor = StompHeaderAccessor.wrap(message);
         if (StompCommand.CONNECT == accessor.getCommand()) {
-            String jwtToken = accessor.getFirstNativeHeader("Authorization");
+            String accessToken = accessor.getFirstNativeHeader("Authorization");
             try {
-                jwtUtils.isExpired(jwtToken);
+                jwtUtils.isExpired(accessToken);
             } catch (Exception e) {
                 log.info("socket jwt exception {}", e.getMessage());
                 throw e;
