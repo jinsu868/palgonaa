@@ -38,11 +38,10 @@ public class ChatRoom extends BaseTimeEntity {
     @JoinColumn(name = "receiver_id", nullable = false)
     private Member receiver;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "product_id", nullable = false)
-    private Product product;
-
-    public static ChatRoom of(Member sender, Member receiver) {
+    public static ChatRoom of(
+            Member sender,
+            Member receiver
+    ) {
         return new ChatRoom(
                 sender,
                 receiver
