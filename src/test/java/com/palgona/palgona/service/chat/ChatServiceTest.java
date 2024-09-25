@@ -218,7 +218,7 @@ class ChatServiceTest {
         given(chatMessageRepository.findAllByRoom(room)).willReturn(Collections.singletonList(message));
 
         // when
-        List<ChatMessage> chatMessages = chatService.getMessageByRoom(member, roomId);
+        List<ChatMessage> chatMessages = chatService.findMessages(member, roomId);
 
         // then
         assertEquals(chatMessages, Collections.singletonList(message));
@@ -361,14 +361,14 @@ class ChatServiceTest {
         given(chatRoomRepository.save(room)).willReturn(room);
 
         // when (sender가 나갈 때)
-        ChatRoom result = chatService.exitChatRoom(roomId, sender);
+        ChatRoom result = chatService.leaveChatRoom(roomId, sender);
 
         // then
         assertTrue(result.isLeaveSender());
         verify(chatRoomRepository, times(1)).save(room);  // once when setting leave status, once in the return statement
 
         // when (receiver가 나갈 때)
-        result = chatService.exitChatRoom(roomId, receiver);
+        result = chatService.leaveChatRoom(roomId, receiver);
 
         // then
         assertTrue(result.isLeaveReceiver());
@@ -393,7 +393,7 @@ class ChatServiceTest {
         given(chatRoomRepository.findById(roomId)).willReturn(Optional.of(room));
 
         // when
-        BusinessException exception = assertThrows(BusinessException.class, () -> chatService.exitChatRoom(roomId, another));
+        BusinessException exception = assertThrows(BusinessException.class, () -> chatService.leaveChatRoom(roomId, another));
 
         // then
         assertEquals(ChatErrorCode.INVALID_MEMBER, exception.getErrorCode());
