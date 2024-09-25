@@ -2,15 +2,11 @@ package com.palgona.palgona.chat.domain;
 
 import com.palgona.palgona.common.entity.BaseTimeEntity;
 import com.palgona.palgona.member.domain.Member;
-import com.palgona.palgona.product.domain.Product;
 import jakarta.persistence.*;
-import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import org.hibernate.annotations.ColumnDefault;
-
-import java.util.List;
 
 @Entity
 @Getter

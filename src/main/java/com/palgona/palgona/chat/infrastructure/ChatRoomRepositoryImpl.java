@@ -1,10 +1,8 @@
 package com.palgona.palgona.chat.infrastructure;
 
 import static com.palgona.palgona.chat.domain.QChatRoom.chatRoom;
-import static com.palgona.palgona.member.domain.QMember.member;
 
 import com.palgona.palgona.member.domain.Member;
-import com.querydsl.jpa.JPAExpressions;
 import com.querydsl.jpa.impl.JPAQueryFactory;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;

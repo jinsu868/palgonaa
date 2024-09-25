@@ -4,7 +4,6 @@ import com.palgona.palgona.common.entity.BaseTimeEntity;
 import com.palgona.palgona.member.domain.Member;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
-import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 

@@ -6,7 +6,6 @@ import com.palgona.palgona.chat.dto.response.ChatMessageResponse;
 import com.palgona.palgona.chat.dto.response.ChatRoomResponse;
 import com.palgona.palgona.common.dto.CustomMemberDetails;
 import com.palgona.palgona.chat.domain.ChatMessage;
-import com.palgona.palgona.chat.domain.ChatRoom;
 import com.palgona.palgona.chat.application.ChatService;
 import io.swagger.v3.oas.annotations.Operation;
 import java.net.URI;
