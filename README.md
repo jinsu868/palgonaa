@@ -1,74 +1,72 @@
-# Palgona
-중고 거래의 투명성과 공정성을 보장하기 위해 경매 시스템을 도입한 중고 거래 애플리케이션 Palgona입니다
+<p align="center">
+   <img width="300" alt="2025-03-08_20-37-02" src="https://github.com/user-attachments/assets/bc22d291-ec07-44cd-8328-91818870bf06" />
+</p>
 
-<br><br>
+<p align="center">
+   중고 물품 경매 서비스, Palgona
+</p>
 
+## 프로젝트 소개
+중고로 물품을 판매할 때 가격 측정에 어려움도 있고 한 사람이 여러 사람에게 동시에 구매 약속을 잡는 문제가 있었습니다.
+저희 Palgona 서비스를 사용하면 중고 물품을 적정한 가격에 쉽게 경매를 통해 판매가 가능합니다.
 
-# 필요성
-1. **기존 거래의 문제점**:
-   - **사기 위험**: 한 사람이 여러 사람에게 불투명하게 동시에 구매 약속을 잡는 문제 존재
-   - **선착순 거래**: 선착순 구조로 인해 공정한 거래가 어려움
+## 시스템 아키텍처
 
-2. **해결책**:
-   - **투명한 거래 과정**: 경매 시스템을 통해 거래 과정을 투명하게 공개합니다.
-   - **공정한 경쟁 기회 제공**: 사용자가 가격을 올려 공정하게 경쟁할 수 있는 기회를 제공
-     
-<br>
+<img width="1023" alt="2025-03-08_21-00-32" src="https://github.com/user-attachments/assets/2edf7c51-5a74-4d45-8f7e-d407d5e6e77c" />
 
-# 기능
-#### 핵심 기능
+## 기여한 부분
 
-1. **입찰 기능**: 구매자가 원하는 물품에 대해 입찰을 통해 경매에 참여 가능
+## 입찰 시스템 구현
 
-2. **실시간 경매 진행**: 경매가 진행되는 동안 실시간으로 입찰 상황을 확인 가능
+### 입찰 플로우
+<img width="1153" alt="2025-03-08_21-31-53" src="https://github.com/user-attachments/assets/50b88662-2edf-40cb-bba6-dcdb621bd614" />
+동시 입찰을 막기 위해 Redis의 분산락을 활용했습니다. (부하 분산) <br>
+입찰 시도가 많이 발생할텐데 DB 레코드 수준(SELECT FOR UPDATE)에서 락을 걸면 DB 부하가 크다고 생각했습니다.
 
-3. **경매 알림**: 입찰 상황, 경매 종료, 새로운 입찰 등 실시간 알림 기능
+### 유저 마일리지 갱신
+<img width="691" alt="2025-03-08_22-09-26" src="https://github.com/user-attachments/assets/12e650b5-217f-461f-be60-c3149cf51294" />
 
+유저 잔액을 갱신이 발생하는 트랜잭션은 총 6개. (입찰 포함) <br>
+-> Pessimistic Lock을 활용하여 동시성 제어
 
-#### 부가 기능
+### 현재 입찰가 반정규화 후 발생한 문제
 
-1. **회원 가입 및 로그인**: 카카오 계정을 통한 간편 가입 및 로그인 기능
+1. 입찰 시간이 종료되기 직전에 입찰 시도 요청이 들어온다. <br>
+2. 입찰 트랜잭션이 끝나기 전에 입찰 만료 시간이 지나고 입찰 만료 확인 트랜잭션(cron Job)이 시작된다. <br>
+3. 마지막 입찰자의 입찰가 갱신이 분실된다. <br>
+<p align="center">
+<img width="752" alt="2025-03-08_21-36-10" src="https://github.com/user-attachments/assets/c2279968-93c3-4011-b02a-b40861813323" />
+</p>
 
-2. **프로필 관리**: 사용자 정보 수정, 프로필 사진 업로드 기능
+조회 성능 때문에 입찰가를 반정규화한 위와 같은 문제가 발생했습니다. <br>
 
-3. **상품 등록**: 판매자가 상품 사진, 설명, 시작 가격, 경매 기간 등을 입력하여 상품을 등록하는 기능
+이를 해결하기 위해 입찰 기간 만료 TX를 시작하기 전에도 분산락을 잡음으로써 Lost Update 문제를 해결할 수 있었습니다.
+<p align="center">
+<img width="728" alt="2025-03-08_21-38-28" src="https://github.com/user-attachments/assets/11a5cfe2-6938-4eae-927a-4152420c2194" />
+</p>
 
-4. **거래 내역 조회**: 사용자가 자신의 거래 내역을 확인하고 관리할 수 있는 기능
-
-5. **메시지 기능**: 구매자와 판매자 간의 실시간 메시지 교환 기능
-
-6. **검색 및 필터링**: 카테고리, 가격 등 다양한 조건으로 상품을 검색하고 필터링할 수 있는 기능
-
-7. **즐겨찾기**: 관심 상품을 즐겨찾기에 추가하여 추후 쉽게 접근할 수 있는 기능
+### 기타
+* 입찰가 반정규화 및 쿼리, 인덱스 튜닝으로 상품 조회 성능 개선
+* Kakao Oauth 로그인 기능 구현
+* Docker & GitHub Actions를 활용하여 CICD 파이프라인 구축
 
 # 기술 스택
+<div align="center">
+  <h3> 기술 스택 </h3>
+  <img src="https://img.shields.io/badge/Java17-000000?style=flat-square&logo=java&color=F40D12">
+  <img src="https://img.shields.io/badge/Spring_Boot_3-0?style=flat-square&logo=spring-boot&logoColor=white&color=%236DB33F">
+  <img src="https://img.shields.io/badge/MySQL_8-0?style=flat-square&logo=mysql&logoColor=white&color=4479A1">
+  <img src="https://img.shields.io/badge/Hibernate-0?style=flat-square&logo=hibernate&logoColor=white&color=%2359666C">
+  <br/>
+  <img src="https://img.shields.io/badge/Amazon_EC2-0?style=flat-square&logo=amazon-ec2&logoColor=white&color=%23FF9900">
+  <img src="https://img.shields.io/badge/Redis-DC382D?style=flat-square&logo=redis&logoColor=white">
+  <br/>
+  <img src="https://img.shields.io/badge/OAuth2-0?style=flat-square&logo=oauth2&logoColor=white&color=%23000000">
+  <img src="https://img.shields.io/badge/Gradle-0?style=flat-square&logo=gradle&logoColor=white&color=%2302303A">
+  <img src="https://img.shields.io/badge/JUnit5-0?style=JUnit5-square&logo=junit5&logoColor=white&color=%2325A162">
+  <br/>
+  <img src="https://img.shields.io/badge/Docker-2496ED?style=flat-square&logo=docker&logoColor=white">
+</div>
+<br/>
+<br/>
 
-<br>
-
-
-# 시스템 아키텍처
-<img width="341" alt="image" src="https://github.com/user-attachments/assets/b7ddc232-30b4-4a22-aad9-97bdcb2ffab8">
-
-<br>
-
-# ERD 
-![image](https://github.com/Palgona/Backend/assets/110288718/3de56c34-e4f3-4f8e-b417-2e07e0efbdb6)
-
-<br>
-
-# 구현 화면
-
-<br>
-
-# API 명세서 
-<img width="971" alt="image" src="https://github.com/Palgona/Backend/assets/110288718/b2694453-35a7-4b15-bf90-dc94b3cacaf8">
-<img width="979" alt="image" src="https://github.com/Palgona/Backend/assets/110288718/a0a0f114-58ca-4e17-91d4-c12b442052bf">
-<img width="970" alt="image" src="https://github.com/Palgona/Backend/assets/110288718/500fed72-d9a5-4163-ad0c-07242998dbc3">
-
-<br>
-
-# 역할
-| 김가영 | 박주희 | 문진수 | 장우진 | 장태준 |
-|---------------------------|----------------------|----------------------|----------------------|----------------------|
-| [<img src="https://avatars.githubusercontent.com/ryong1" width="130px;" style="max-width: 100%;">](https://github.com/ryong1) | [<img src="https://avatars.githubusercontent.com/juhui0534" width="130px;" style="max-width: 100%;">](https://github.com/juhui0534) | [<img src="https://avatars.githubusercontent.com/jinsu868" width="130px;" style="max-width: 100%;">](https://github.com/jinsu868)  | [<img src="https://avatars.githubusercontent.com/JangWooJin1" width="130px;" style="max-width: 100%;">](https://github.com/JangWooJin1) | [<img src="https://avatars.githubusercontent.com/janghoosa" width="130px;" style="max-width: 100%;">](https://github.com/janghoosa) |
-| FE | FE | BE | BE | BE | 
