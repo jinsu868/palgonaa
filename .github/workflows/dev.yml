@@ -3,7 +3,6 @@ name: Java CI with Gradle
 on:
   pull_request:
     branches: [ "develop" ]
-    types: [ closed ]
 
 jobs:
   build-and-upload:
@@ -18,13 +17,6 @@ jobs:
         with:
           java-version: '17'
           distribution: 'temurin'
-
-      - name: Make FCMAccountKey.json
-        run: |
-          cd ./src/main/resources
-          touch ./FCMAccountKey.json
-          echo "${{ secrets.FCM_KEY }}" > ./FCMAccountKey.json
-        shell: bash
 
       - name: Make application.yml
         run: |
@@ -42,8 +34,8 @@ jobs:
       - name: Docker build & push
         run: |
           docker login -u ${{ secrets.DOCKER_USERNAME }} -p ${{ secrets.DOCKER_PASSWORD }}
-          docker build -t ${{ secrets.DOCKER_USERNAME }}/palgona -f Dockerfile .
-          docker push ${{ secrets.DOCKER_USERNAME }}/palgona
+          docker build -t ${{ secrets.DOCKER_USERNAME }}/pal -f Dockerfile .
+          docker push ${{ secrets.DOCKER_USERNAME }}/pal
 
       - name: Deploy
         uses: appleboy/ssh-action@master
@@ -52,8 +44,8 @@ jobs:
           username: ${{ secrets.HOSTNAME }}
           key: ${{ secrets.KEY }}
           script: |
-            docker stop palgona
-            docker rm palgona
-            docker image rm -f palgona
-            docker pull ${{ secrets.DOCKER_USERNAME }}/palgona
-            docker run -d -p 8080:8080 --name palgona ${{ secrets.DOCKER_USERNAME }}/palgona
+            docker stop pal
+            docker rm pal
+            docker image rm -f pal
+            docker pull ${{ secrets.DOCKER_USERNAME }}/pal
+            docker run -d -p 8080:8080 --name pal ${{ secrets.DOCKER_USERNAME }}/pal

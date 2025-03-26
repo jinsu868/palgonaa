@@ -24,7 +24,7 @@ public class FCMController {
     public ResponseEntity<Void> updateFCMToken(
             @AuthenticationPrincipal CustomMemberDetails member,
             @RequestBody FCMTokenUpdateRequest request
-            ){
+    ){
 
         fcmService.updateFCMToken(member, request);
 
