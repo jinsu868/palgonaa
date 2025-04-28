@@ -1,6 +1,8 @@
 package com.palgona.palgona.image.application;
 
-import com.palgona.palgona.image.domain.S3Client;
+import com.ssafy.hangbokdog.image.domain.S3Client;
+import java.util.ArrayList;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -10,24 +12,31 @@ import org.springframework.web.multipart.MultipartFile;
 @RequiredArgsConstructor
 public class S3Service {
 
-    private final S3Client s3Client;
-
-    @Value("${s3.base.url}")
+    @Value("${cloud.aws.s3.base.url}")
     private String baseUrl;
 
-    public String generateS3FileUrl(String fileName) {
-        return baseUrl + fileName;
+    private final S3Client s3Client;
+
+    public List<String> uploadFiles(List<MultipartFile> files) {
+        List<String> imageUrls = new ArrayList<>();
+        for (MultipartFile file : files) {
+            String uploadFileName = generateFileUrl(file.getOriginalFilename());
+            imageUrls.add(s3Client.upload(file, uploadFileName));
+        }
+
+        return imageUrls;
     }
 
-    public String upload(MultipartFile file, String fileName) {
-        return s3Client.upload(file, fileName);
+    public String uploadFile(MultipartFile file) {
+        String uploadFileName = generateFileUrl(file.getOriginalFilename());
+        return s3Client.upload(file, uploadFileName);
     }
 
     public void deleteFile(String imageUrl) {
         s3Client.deleteFile(imageUrl);
     }
 
-    public String uploadBase64Image(String base64Image) {
-        return s3Client.uploadBase64Image(base64Image);
+    private String generateFileUrl(String fileName) {
+        return baseUrl + fileName;
     }
 }
