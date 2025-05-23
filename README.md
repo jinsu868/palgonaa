@@ -58,7 +58,8 @@
 
 #### Read Snapshot Scheduler
 
-<img width="923" alt="2025-05-23_19-02-01" src="https://github.com/user-attachments/assets/3bc8ab57-eb99-4bbe-882b-79907a92ba56" />
+<img width="834" alt="2025-05-23_19-49-31" src="https://github.com/user-attachments/assets/4f90d069-d063-462b-bfbb-3164171af44b" />
+
 
 * 위와 같이 짧은 주기의 스케줄링을 통해 현재 입찰가를 UPDATE 했습니다. (시간을 더 짧게 가져가면 갱신이 빨라지는대신 부하가 커짐)
 * Scheduling을 할 때 고려해야할 것이 있습니다.
