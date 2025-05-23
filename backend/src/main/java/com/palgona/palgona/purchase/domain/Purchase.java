@@ -1,20 +1,14 @@
 package com.palgona.palgona.purchase.domain;
 
 import com.palgona.palgona.common.entity.BaseTimeEntity;
-import com.palgona.palgona.bidding.domain.Bidding;
-import com.palgona.palgona.member.domain.Member;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
-import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
-import jakarta.persistence.JoinColumn;
-import jakarta.persistence.ManyToOne;
-import jakarta.persistence.OneToOne;
-import java.time.LocalDateTime;
+
 import lombok.AccessLevel;
 import lombok.Builder;
 import lombok.Getter;
@@ -27,83 +21,44 @@ public class Purchase extends BaseTimeEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "purchase_id")
     private Long id;
 
-    @Column(nullable = false)
-    private int purchasePrice;
+    @Column(name = "product_id", nullable = false)
+    private Long productId;
 
-    private String reason;
+    @Column(name = "user_id", nullable = false)
+    private Long userId;
 
-    @Column(nullable = false)
+    @Column(name = "amount", nullable = false)
+    private int amount;
+
     @Enumerated(EnumType.STRING)
+    @Column(name = "state", nullable = false)
     private PurchaseState state;
 
-    @Column(nullable = false)
-    private LocalDateTime deadline;
-
-    @OneToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "bidding_id")
-    private Bidding bidding;
-
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "seller_id")
-    private Member seller;
-
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "buyer_id")
-    private Member buyer;
-
     @Builder
-    public Purchase(
-            int purchasePrice,
-            Bidding bidding,
-            Member buyer,
-            Member seller) {
-        this.purchasePrice = purchasePrice;
-        this.bidding = bidding;
-        this.buyer = buyer;
-        this.seller = seller;
-        this.reason = null;
-        this.state = PurchaseState.WAIT;
-        this.deadline = LocalDateTime.now().plusDays(1);
+    public Purchase(Long id, Long productId, Long userId, int amount) {
+        this.id = id;
+        this.productId = productId;
+        this.userId = userId;
+        this.amount = amount;
+        this.state = PurchaseState.ONGOING;
     }
 
-    public static Purchase of(
-            int purchasePrice,
-            Bidding bidding,
-            Member buyer,
-            Member seller
-    ) {
-        return new Purchase(
-                purchasePrice,
-                bidding,
-                buyer,
-                seller
-        );
+    public boolean isOwner(Long userId) {
+        return userId.equals(userId);
     }
 
-    public void confirm() {
-        state = PurchaseState.CONFIRM;
-    }
-
-    public void updateReason(String reason) {
-        this.reason = reason;
+    public boolean isOngoing() {
+        return state == PurchaseState.ONGOING;
     }
 
     public void cancel() {
         state = PurchaseState.CANCEL;
     }
 
-    public boolean isDeadlineReached() {
-        return deadline.isBefore(LocalDateTime.now());
+    public void complete() {
+        state = PurchaseState.COMPLETED;
     }
-
-    public boolean isBuyer(Member buyer) {
-        return this.buyer.getId() == buyer.getId();
-    }
-
-    public boolean isWaitState() {
-        return state == PurchaseState.WAIT;
-    }
-
 }
