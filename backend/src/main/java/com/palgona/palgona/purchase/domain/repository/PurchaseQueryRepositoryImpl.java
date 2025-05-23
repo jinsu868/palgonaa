@@ -43,6 +43,7 @@ public class PurchaseQueryRepositoryImpl implements PurchaseQueryRepository {
                         purchase.userId.eq(userId),
                         isInRange(pageToken))
                 .limit(pageSize + 1)
+                .orderBy(purchase.id.desc())
                 .fetch();
     }
 
