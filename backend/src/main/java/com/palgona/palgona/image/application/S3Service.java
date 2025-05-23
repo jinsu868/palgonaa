@@ -1,6 +1,6 @@
 package com.palgona.palgona.image.application;
 
-import com.ssafy.hangbokdog.image.domain.S3Client;
+import com.palgona.palgona.image.domain.S3Client;
 import java.util.ArrayList;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
