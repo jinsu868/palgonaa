@@ -1,59 +1,50 @@
 package com.palgona.palgona.product.application;
 
-import com.palgona.palgona.bookmark.domain.BookmarkRepository;
-import com.palgona.palgona.common.dto.CustomMemberDetails;
-import com.palgona.palgona.common.dto.response.SliceResponse;
-import com.palgona.palgona.common.error.exception.BusinessException;
-import com.palgona.palgona.fcm.domain.SilentNotifications;
-import com.palgona.palgona.image.application.S3Service;
-import com.palgona.palgona.image.domain.Image;
-import com.palgona.palgona.image.dto.ImageUploadRequest;
-import com.palgona.palgona.image.util.FileUtils;
-import com.palgona.palgona.member.domain.Member;
-import com.palgona.palgona.notification.domain.SilentNotificationsRepository;
-import com.palgona.palgona.product.domain.Category;
+import java.time.LocalDate;
+import java.time.temporal.ChronoUnit;
+import java.util.Comparator;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
+
+import org.springframework.transaction.annotation.Transactional;
+import org.apache.commons.lang3.tuple.Pair;
+import org.springframework.stereotype.Service;
+
+import com.palgona.palgona.product.dto.response.ProductResponse;
+import com.palgona.palgona.product.domain.ProductMeta;
 import com.palgona.palgona.product.domain.Product;
-import com.palgona.palgona.product.domain.ProductImage;
 import com.palgona.palgona.product.domain.ProductState;
-import com.palgona.palgona.product.domain.SortType;
 import com.palgona.palgona.product.dto.request.ProductCreateRequest;
 import com.palgona.palgona.product.dto.response.ProductDetailResponse;
-import com.palgona.palgona.product.dto.response.ProductPageResponse;
-import com.palgona.palgona.bidding.domain.BiddingRepository;
-import com.palgona.palgona.image.domain.ImageRepository;
-import com.palgona.palgona.product.domain.ProductRepository;
-import com.palgona.palgona.product.event.ImageUploadEvent;
-import com.palgona.palgona.product.infrastructure.querydto.ProductDetailQueryResponse;
-import java.util.ArrayList;
+import com.palgona.palgona.product.dto.ProductWithBidAmountInfo;
+import com.palgona.palgona.user.domain.User;
+import com.palgona.palgona.common.error.BadRequestException;
+import com.palgona.palgona.common.error.ErrorCode;
+import com.palgona.palgona.common.model.PageInfo;
+import com.palgona.palgona.product.domain.repository.ProductRepository;
+import com.palgona.palgona.product.dto.request.ProductUpdateRequest;
+import com.palgona.palgona.product.dto.ProductBookmarkCount;
+import com.palgona.palgona.product.dto.ProductDateInfo;
+import com.palgona.palgona.product.dto.ProductStatisticInfo;
+
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.context.ApplicationEventPublisher;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.multipart.MultipartFile;
 
-import java.util.List;
-
-import static com.palgona.palgona.common.error.code.ProductErrorCode.*;
-import static com.palgona.palgona.common.error.code.SlientNotificationsErrorCode.NOTIFICATION_ALREADY_SILENCED;
-import static com.palgona.palgona.common.error.code.SlientNotificationsErrorCode.NOTIFICATION_NOT_FOUND;
-
-@RequiredArgsConstructor
 @Service
-@Slf4j
+@RequiredArgsConstructor
 public class ProductService {
 
+    private static final int DEFAULT_PAGE_SIZE = 10;
+    private static final double DECREASE_RATIO = 0.05;
+
     private final ProductRepository productRepository;
-    private final ImageRepository imageRepository;
-    private final BookmarkRepository bookmarkRepository;
-    private final BiddingRepository biddingRepository;
-    private final S3Service s3Service;
-    private final SilentNotificationsRepository silentNotificationsRepository;
-    private final ApplicationEventPublisher publisher;
 
     @Transactional
-    public Long createProduct(ProductCreateRequest request, Member member) {
-
+    public Long createProduct(
+            List<String> imageUrls,
+            ProductCreateRequest request,
+            User user
+    ) {
         Product product = Product.of(
                 request.name(),
                 request.initialPrice(),
@@ -61,134 +52,122 @@ public class ProductService {
                 request.category(),
                 request.deadline(),
                 ProductState.ON_SALE,
-                member
+                user.getId(),
+                imageUrls
         );
 
-        List<ImageUploadRequest> uploadRequests = new ArrayList<>();
-        List<ProductImage> productImages = new ArrayList<>();
-
-        for (MultipartFile imageFile : request.files()) {
-            String uploadFileName = FileUtils.createFileName(imageFile.getOriginalFilename());
-            String imageUrl = s3Service.generateS3FileUrl(uploadFileName);
-            uploadRequests.add(new ImageUploadRequest(imageFile, uploadFileName));
-            Image image = Image.from(imageUrl);
-            productImages.add(ProductImage.of(product, image));
-        }
-
-        product.addProductImages(productImages);
-
         productRepository.save(product);
-        publisher.publishEvent(new ImageUploadEvent(uploadRequests));
+        productRepository.insertProductMeta(ProductMeta.builder()
+                .productId(product.getId())
+                .score(0)
+                .bookmarkCount(0)
+                .build()
+        );
+
         return product.getId();
     }
 
-    public ProductDetailResponse readProduct(Long productId, Member member){
-        ProductDetailQueryResponse queryResponse = productRepository.findProductWithAll(productId)
-                        .orElseThrow(() -> new BusinessException(NOT_FOUND));
-
-        List<String> imageUrls = imageRepository.findAllImageUrlByProductId(productId);
-
-        return ProductDetailResponse.of(queryResponse, imageUrls);
+    public ProductDetailResponse find(Long productId, User user) {
+        return productRepository.findDetailById(productId)
+                .orElseThrow(() -> new BadRequestException(ErrorCode.PRODUCT_NOT_FOUND));
     }
 
-    @Transactional(readOnly = true)
-    public SliceResponse<ProductPageResponse> readProducts(SortType sortType,
-                                                           Category category,
-                                                           String searchWord,
-                                                           String cursor,
-                                                           int pageSize
+    /**
+     * 상품 전체 조회 API
+     * DEFAULT_PAGE_SIZE(10) 개를 ProductMeta 통계 테이블에서 먼저 뽑아오고
+     * In Query 로 필요한 데이터 긁어오는 방식으로 처리
+     * ORDER - (Product.score DESC, Product.id DESC)
+     * PageToken form : {score}@{productId}
+     */
+    public PageInfo<ProductResponse> findAll(
+            String pageToken
     ) {
-        return productRepository.findAllByCategoryAndSearchWord(
-                category,
-                searchWord,
-                cursor,
-                sortType,
-                pageSize
-        );
+        List<ProductMeta> productMetas = productRepository.findProductMetasWithPaging(pageToken);
+        Map<Long, Pair<Integer, Double>> productIdsToBookmarkCount = mapProductIdsToBookmarkCount(productMetas);
+        List<Long> productIds = extractProductIdsFromMeta(productMetas);
+        List<ProductWithBidAmountInfo> productInfos = productRepository.findWithBidAmountByIdsIn(productIds);
+        var data = productInfos.stream()
+                .map(productInfo -> {
+                    var productIdToMeta = productIdsToBookmarkCount.get(productInfo.id());
+                    return ProductResponse.builder()
+                            .id(productInfo.id())
+                            .name(productInfo.name())
+                            .currentBid(productInfo.currentBid())
+                            .deadline(productInfo.deadline())
+                            .imageUrl(productInfo.imageUrl().isEmpty() ? "" : productInfo.imageUrl().get(0))
+                            .buyerName(productInfo.sellerNickname())
+                            .bookmarkCount(productIdToMeta.getLeft())
+                            .score(productIdToMeta.getRight())
+                            .build();
+                    // score, id 순으로 이미 PAGE_SIZE 개를 DB 에서 가져와서 메모리에서 정렬해도 상관없음.
+                }).sorted(
+                        Comparator
+                                .comparing(ProductResponse::score).reversed()
+                                .thenComparing(ProductResponse::id, Comparator.reverseOrder())
+                ).toList();
+        return PageInfo.of(data, DEFAULT_PAGE_SIZE, ProductResponse::score, ProductResponse::id);
     }
 
-    @Transactional
-    public void deleteProduct(Long productId, Member member) {
-
-        Product product = findProduct(productId);
-
-        validateProductPermission(member, product);
-        validateProductDelete(product);
-
-        bookmarkRepository.deleteByProduct(product);
-
-        // TODO: history 테이블로 이전시키기
-        product.updateProductState(ProductState.DELETED);
-    }
-
-    public void turnOffProductNotification(Long productId, CustomMemberDetails memberDetails){
-        Member member = memberDetails.getMember();
-
-        //1. 해당 상품이 존재하는지 확인
+    public void deleteProduct(Long productId, User user) {
         Product product = productRepository.findById(productId)
-                .orElseThrow(() -> new BusinessException(NOT_FOUND));
+                .orElseThrow(() -> new BadRequestException(ErrorCode.PRODUCT_NOT_FOUND));
 
-        //2. 해당 상품에 알림 무시가 이미 설정되어있는지 확인
-        silentNotificationsRepository.findByMemberAndProduct(member, product)
-                .ifPresent(b -> {
-                    throw new BusinessException(NOTIFICATION_ALREADY_SILENCED);
-                });
-
-        //3. 알림 무시 추가
-        SilentNotifications silentNotifications = SilentNotifications.builder()
-                .member(member)
-                .product(product)
-                .build();
-
-        silentNotificationsRepository.save(silentNotifications);
-    }
-
-    public void turnOnProductNotification(Long productId, CustomMemberDetails memberDetails){
-        Member member = memberDetails.getMember();
-
-        //1. 해당 상품이 존재하는지 확인
-        Product product = productRepository.findById(productId)
-                .orElseThrow(() -> new BusinessException(NOT_FOUND));
-
-        //2. 해당 상품에 알림 무시가 설정되어있는지 확인
-        SilentNotifications silentNotifications = silentNotificationsRepository.findByMemberAndProduct(member, product)
-                .orElseThrow(() -> new BusinessException(NOTIFICATION_NOT_FOUND));
-
-        //3. 알림 무시 삭제
-        silentNotificationsRepository.delete(silentNotifications);
-    }
-
-    @Transactional
-    public void addImage(Member member, Long productId, MultipartFile file) {
-
-        Product product = findProduct(productId);
-
-        validateProductPermission(member, product);
-
-        String uploadFileName = FileUtils.createFileName(file.getOriginalFilename());
-        String imageUrl = s3Service.generateS3FileUrl(uploadFileName);
-
-        Image image = Image.from(imageUrl);
-        ProductImage productImage = ProductImage.of(product, image);
-        product.addProductImage(productImage);
-
-        publisher.publishEvent(ImageUploadEvent.from(List.of(ImageUploadRequest.of(file, uploadFileName))));
-    }
-
-    private void validateProductDelete(Product product){
-        if (biddingRepository.existsByProduct(product)) {
-            throw new BusinessException(RELATED_BIDDING_EXISTS);
+        if (!product.isOwner(user)) {
+            throw new BadRequestException(ErrorCode.HAS_NOT_PERMISSION_REMOVE_PRODUCT);
         }
+
+        productRepository.delete(product);
     }
 
-    private void validateProductPermission(Member member, Product product) {
-        if (!(product.isOwner(member) || member.isAdmin())) {
-            throw new BusinessException(INSUFFICIENT_PERMISSION);
-        }
+    /**
+     * Batch Scheduling - Product 북마크 수, 지난 날짜를 종합적으로 평가하여 ProductMeta 테이블에 UPDATE
+     * 만약 Product 의 개수가 많아진다면 PK로 구간을 나눠서 병렬 처리하는게 좋음.
+     * 그럼에도 느릴 경우 (DB 의 CPU, Memory 한계로) Sharding 을 고려
+     * shard 의 개수가 불변이라면 % (모듈러) 해싱으로 가능할 거 같다.
+     * 당연히 위 방식은 샤드 개수가 바뀌면 취약함. 바뀐다면 그때가서 날잡고 고치거나 다른 방법을 생각하는게 맞는듯..?
+     */
+    public void calculateScores() {
+        var productDateInfo = productRepository.findAllProductDate();
+        var productIds = extractProductIds(productDateInfo);
+        var bookmarkCounts = productRepository.getAllBookmarkCountsInIds(productIds);
+        var productIdsToBookmarkCounts = mapProductIdsToBookmarkCounts(bookmarkCounts);
+        var productStatisticInfos = productDateInfo.stream()
+                .map(info -> {
+                    long daysPassed = ChronoUnit.DAYS.between(info.createdAt().toLocalDate(), LocalDate.now());
+                    int bookmarkCount = productIdsToBookmarkCounts.getOrDefault(info.id(), 0);
+                    double score = bookmarkCount * Math.pow(1 - DECREASE_RATIO, daysPassed);
+                    return ProductStatisticInfo.of(info.id(), bookmarkCount, score);
+                })
+                .toList();
+
+        productRepository.updateScores(productStatisticInfos);
     }
 
-    private Product findProduct(Long productId) {
-        return productRepository.findById(productId)
-                .orElseThrow(() -> new BusinessException(NOT_FOUND));
+    private Map<Long, Integer> mapProductIdsToBookmarkCounts(List<ProductBookmarkCount> bookmarkCounts) {
+        return bookmarkCounts.stream()
+                .collect(Collectors.toMap(
+                        ProductBookmarkCount::id,
+                        ProductBookmarkCount::count
+                ));
+    }
+
+    private List<Long> extractProductIds(List<ProductDateInfo> productDateInfo) {
+        return productDateInfo.stream()
+                .map(ProductDateInfo::id)
+                .toList();
+    }
+
+    private List<Long> extractProductIdsFromMeta(List<ProductMeta> productMetas) {
+        return productMetas.stream()
+                .map(ProductMeta::getProductId)
+                .toList();
+    }
+
+    private Map<Long, Pair<Integer, Double>> mapProductIdsToBookmarkCount(List<ProductMeta> productMetas) {
+        return productMetas.stream()
+                .collect(Collectors.toMap(
+                        ProductMeta::getProductId,
+                        meta -> Pair.of(meta.getBookmarkCount(), meta.getScore())
+                ));
     }
 }
