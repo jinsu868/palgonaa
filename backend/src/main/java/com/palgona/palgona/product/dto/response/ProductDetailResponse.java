@@ -1,42 +1,20 @@
 package com.palgona.palgona.product.dto.response;
 
-import com.palgona.palgona.product.infrastructure.querydto.ProductDetailQueryResponse;
-
 import java.time.LocalDateTime;
 import java.util.List;
+
+import com.palgona.palgona.product.domain.ProductCategory;
+import com.palgona.palgona.product.domain.ProductState;
 
 public record ProductDetailResponse(
         Long productId,
         String productName,
         String content,
-        String category,
-        String productState,
+        ProductCategory category,
+        ProductState state,
         LocalDateTime deadline,
-        LocalDateTime created_at,
-        Long ownerId,
-        String ownerName,
-        String ownerImgUrl,
-        Integer highestPrice,
-        List<String> imageUrls
+        List<String> imageUrls,
+        int bidAmount,
+        String sellerName
 ) {
-    public static ProductDetailResponse of(
-            ProductDetailQueryResponse queryResponse,
-            List<String> files
-    ){
-        return new ProductDetailResponse(
-                queryResponse.productId(),
-                queryResponse.productName(),
-                queryResponse.content(),
-                queryResponse.category().getKey(),
-                queryResponse.productState().getKey(),
-                queryResponse.deadline(),
-                queryResponse.created_at(),
-                queryResponse.ownerId(),
-                queryResponse.ownerName(),
-                queryResponse.ownerImgUrl(),
-                queryResponse.highestBid(),
-                files
-        );
-    }
-
 }
