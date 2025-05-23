@@ -19,22 +19,25 @@ public enum ErrorCode {
 
     VALIDATION_FAIL(4000, "유효하지 않은 형식입니다."),
     INTERNAL_SERVER_ERROR(4001, "Internal Server Error"),
+    FAILED_TO_PARSE_TOKEN(4002, "토큰을 파싱하는데 실패했습니다."),
 
     USER_NOT_FOUND(5000, "존재하지 않는 유저입니다."),
     NOT_ADMIN_USER(5001, "관리자가 아닙니다."),
     NOT_EXIST_EMAIL(5002, "일치하는 이메일이 존재하지 않습니다"),
     NOT_MATCH_PASSWORD(5003, "비밀번호가 일치하지 않습니다."),
 
-    DOG_NOT_FOUND(6000, "존재하지 않는 강아지입니다."),
-    FOSTER_APPLICATION_NOT_FOUND(6001, "존재하지 않는 임시보호 요청입니다."),
-    FOSTER_ALREADY_PROCESSED(6002, "이미 처리된 임시보호 요청입니다."),
-    NOT_VALID_FOSTER_APPLICATION(6003, "유효하지 않은 임시보호 요청입니다."),
-    FOSTER_ALREADY_EXISTS(6004, "이미 존재하는 임보 요청입니다."),
-    FOSTER_ALREADY_FULL(6005, "이미 임시보호 용량이 꽉찼습니다."),
+    INVALID_PRICE(6000, "상품 가격은 음수가 될 수 없습니다."),
+    INVALID_PRODUCT_DEADLINE(6001, "경매 기간이 1일보다 짧을 수 없습니다"),
+    PRODUCT_NOT_FOUND(6002, "상품을 찾을 수 없습니다."),
+    HAS_NOT_PERMISSION_REMOVE_PRODUCT(6003, "상품 삭제 권한이 없습니다."),
+    HAS_NOT_PERMISSION_UPDATE_PRODUCT(6004, "상품 수정 권한이 없습니다."),
+    EXPIRE_PRODUCT(6004, "상품 경매 기간이 만료됐습니다."),
 
-    PRODUCT_NOT_FOUND(7000, "존재하지 않는 상품입니다."),
-    PRODUCT_NOT_ON_SALE(7001, "현재 판매중인 상품이 아닙니다."),
-    CANNOT_PURCHASE_OWN_PRODUCT(7002, "내 상품은 구매할 수 없습니다."),
+    NOT_ENOUGH_BALANCE(6004, "잔액이 부족합니다."),
+    INVALID_CHARGE_BALANCE(6005, "충전 금액이 유효하지 않습니다."),
+    NOT_FOUND_MILEAGE(6006, "해당 마일리지를 찾을 수 없습니다."),
+
+    INVALID_ATTEMPT_AMOUNT(7000, "유효하지 않은 입찰가입니다."),
 
     POST_TYPE_NOT_FOUND(8000, "존재하지 않는 게시판입니다."),
     POST_NOT_FOUND(8001, "존재하지 않는 게시글입니다."),
@@ -46,15 +49,18 @@ public enum ErrorCode {
     UNAUTHORIZED_ORDER_ACCESS(10001, "해당 상품 주문 유저가 아닙니다."),
     FAILED_TO_ACCESS_PRODUCT(10002, "상품 접근에 실패했습니다."),
 
-    MILEAGE_NOT_FOUND(11000, "존재하지 않는 마일리지입니다."),
-    INSUFFICIENT_BALANCE(11001, "잔액이 부족합니다."),
 
     FAILED_TO_VALIDATE_PAYMENT(12000, "결제 검증에 실패했습니다."),
     ALREADY_CHARGED_REQUEST(12001, "이미 충전됐습니다."),
 
     COMMENT_NOT_FOUND(13000, "존재하지 않는 댓글입니다."),
     COMMENT_NOT_AUTHOR(13001, "해당 댓글의 작성자가 아닙니다."),
-    COMMENT_ALREADY_DELETED(13002, "이미 삭제된 댓글입니다.");
+    COMMENT_ALREADY_DELETED(13002, "이미 삭제된 댓글입니다."),
+
+    PURCHASE_NOT_FOUND(14000, "존재하지 않는 구매내역입니다."),
+    PURCHASE_NOT_OWNED(14001, "본인의 구매내역이 아닙니다."),
+    PURCHASE_NOT_ONGOING(14002, "구매 확정 기간이 아닙니다."),
+    INVALID_PURCHASE_UPDATE(14003, "유효하지 구매 상태 변경 요청입니다.");
 
     private final int code;
     private final String message;
