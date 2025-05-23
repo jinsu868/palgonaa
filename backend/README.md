@@ -2,71 +2,94 @@
    <img width="300" alt="2025-03-08_20-37-02" src="https://github.com/user-attachments/assets/bc22d291-ec07-44cd-8328-91818870bf06" />
 </p>
 
+
 <p align="center">
    중고 물품 경매 서비스, Palgona
 </p>
 
-## 프로젝트 소개
+# 프로젝트 소개
+
 중고로 물품을 판매할 때 가격 측정에 어려움도 있고 한 사람이 여러 사람에게 동시에 구매 약속을 잡는 문제가 있었습니다.
 저희 Palgona 서비스를 사용하면 중고 물품을 적정한 가격에 쉽게 경매를 통해 판매가 가능합니다.
+
+# 기여한 부분
+
+## 입찰 시스템 구축
+
+### V1 입찰 플로우 (개선 전)
+
+* 동시에 입찰을 진행할 때 발생하는 Lost Update를 막기 위해 처음에는 PorductId에 Lock을 잡음으로써 Serializable 하게 입찰을 진행했습니다. (V1) 
+
+<img width="1153" alt="2025-03-08_21-31-53" src="https://github.com/user-attachments/assets/50b88662-2edf-40cb-bba6-dcdb621bd614" /></br>
+
+이 때 3가지 옵션정도 고려했습니다.
+
+1. DB - SELECT FOR UPDATE (x)
+2. Versioning (x)
+3. Redis Distributed Lock (v1) dev-v1
+
+1, 2 번에 비해 3번이 유리하다고 판단했고 Redis Distributed Lock을 채택했습니다. (자세한 내용은 개인 노션에 정리)
+
+* V1 방식의 경우 Redis 에 장애가 발생한 경우 입찰을 진행할 수 없는 단점이 있습니다.
+* 물론 Clustering을 하게 되면 물리적으로 동시에 모든 Node가 내려가진 않는 이상 문제가 발생하지 않습니다.
+* 하지만 이런 경우가 진짜 드물겠지만 발생할 수도 있고 온라인 경매 입찰의 서비스의 성격을 고려헀을 때 꼭 즉각적으로 락을 잡고 갱신을 할 필요가 있는지 고민해볼 필요가 있습니다.
+  * "입찰 로그를 쌓아두고 짧은 주기로 현재 입찰가를 갱신해주고 화면에 반영해도 충분하지 않은가?" 라는 생각을 해볼 수 있습니다.
+
+</br>
+
+### V2 입찰 플로우 (개선 후)
+현재 시점에 유효한 입찰 시도 이벤트(bid_event)를 DB에 append only로 쌓고 짧은 주기로 스케줄링을 돌려서 현재 입찰에 대한 정보(bid)를 갱신합니다. (V2)
+<img width="895" alt="2025-05-23_19-38-46" src="https://github.com/user-attachments/assets/9d7c275b-63cb-4b4d-9ce6-79b573633832" />
+
+* bid 테이블에서 현재 입찰가를 보고 지금보다 더 높은 가격으로 들어오는 bid_event를 모두 append only로 쌓는다.
+* 주기적으로 Batch job을 통해 bid_event -> bid 테이블로 현재 입찰가를 갱신한다. (snapshot 생성)
+  * bid_event만 가지고도 현재 입찰가와 입찰자를 알아낼 수 있지만 매번 Read를 할 때마다 모든 Record를 읽으면 성능이 나오지 않습니다.
+  * CQRS 패턴을 도입하여 주기적으로 Batch Job을 통해 Bid(현재 입찰 정보 snapshot)을 UPDATE 치고 조회는 Bid에서 하면 성능이 좋습니다.
+
+</br>
+
+#### bid_event 테이블 (JPA 선택 X 이유)
+<img width="872" alt="2025-05-23_19-00-29" src="https://github.com/user-attachments/assets/39d5c047-bce0-45d0-82cc-529cfa6935a7" />
+
+* bid_event의 경우 append only로 테이블에 INSERT만 발생하는 테이블입니다.
+* 때문에 굳이 ORM(JPA)를 사용하여 Layer를 하나 더 둠으로써 성능 손해를 볼 필요가 없습니다. (JDBC 작성해서 Insert 처리)
+
+</br>
+
+#### Read Snapshot Scheduler
+
+<img width="923" alt="2025-05-23_19-02-01" src="https://github.com/user-attachments/assets/3bc8ab57-eb99-4bbe-882b-79907a92ba56" />
+
+* 위와 같이 짧은 주기의 스케줄링을 통해 현재 입찰가를 UPDATE 했습니다. (시간을 더 짧게 가져가면 실시간성이 높아지는대신 부하가 커짐)
+* Scheduling을 할 때 고려해야할 것이 있습니다.
+  * 작업이 길어져서 시간내에 안끝나는 경우
+  * 이중화를 했을 때 여러 서버에서 같은 스케줄러가 돌아가는 경우
+    * 첫 번째는 Throughput을 늘리기 위해 특정 기준(PK)으로 처리할 데이터를 나눠서 병렬로 처리하면 더 빠르게 처리할 수 있습니다. 물리적인 자원 (CPU, Memory)가 부족한 경우는 Sharding을 여러 노드로 처리하여 처리량을 높일 수는 있습니다. Sharding의 경우 처음에 OLPT에서 처리될 규모를 어느정도 산정해두고 Shard 개수를 계산해두고 Module Hasing 처리를 할 것 같습니다. 만약 규모가 커지면 그떄가서 수정하는 방시으로 처리...
+    * 두 번쨰는 여러 방법이 있겠지만 위 이미지와 같이 특정 메타 데이터(String)에 락을 잡아서 하나만 실행되도록 할 수 있습니다. ShedLock 라이브러리를 사용하면 손쉽게 처리 가능합니다.
+
+</br>
+
+## 상품 조회 성능 개선
+
+### ProductMeta Table 도출
+<img width="896" alt="2025-05-23_19-10-50" src="https://github.com/user-attachments/assets/d907b4e7-9d1f-4c83-89ab-5574c73f8a1f" />
+
+* 저는 위와 같이 상품에 대한 통계 테이블을 만들었습니다. bookmarkCount가 높을 수록, 그리고 Product 등록이 얼마 안지났을수록 먼저 조회되도록 score를 세팅했습니다.
+* 상품에 대한 가중치는 Strong Consistency가 굳이 필요없습니다.
+* 일시적으로 오차가 발생해도 크게 문제될 것이 없기에 eventually consistency만 맞춰줬습니다.
+
+</br>
+
+### Product List 조회 방식
+<img width="936" alt="2025-05-23_19-22-31" src="https://github.com/user-attachments/assets/dc81069d-0a55-408e-921b-75797c16ef45" />
+
+* ProductMeta 테이블을 활용하여 가져올 상품의 Id를 가져옵니다. (DEFAULT_PAGE_SIZE = 10)
+* 그리고 실제 Product 테이블에서 In Query를 통해 필요한 데이터를 가져옵니다.
+* 가져온 데이터를 정렬 기준에 따라 정렬하고 리턴합니다. (메모리 정렬이 가능한 이유는 ProductMeta 테이블에서 조회한 Product Id로 가져온 것이기 때문에 조건에 맞는 데이터만 가져온 것.)
+
 
 ## 시스템 아키텍처
 
 <img width="1023" alt="2025-03-08_21-00-32" src="https://github.com/user-attachments/assets/2edf7c51-5a74-4d45-8f7e-d407d5e6e77c" />
 
-## 기여한 부분
-
-## 입찰 시스템 구현
-
-### 입찰 플로우
-<img width="1153" alt="2025-03-08_21-31-53" src="https://github.com/user-attachments/assets/50b88662-2edf-40cb-bba6-dcdb621bd614" />
-동시 입찰을 막기 위해 Redis의 분산락을 활용했습니다. (부하 분산) <br>
-입찰 시도가 많이 발생할텐데 DB 레코드 수준(SELECT FOR UPDATE)에서 락을 걸면 DB 부하가 크다고 생각했습니다.
-
-### 유저 마일리지 갱신
-<img width="691" alt="2025-03-08_22-09-26" src="https://github.com/user-attachments/assets/12e650b5-217f-461f-be60-c3149cf51294" />
-
-유저 잔액을 갱신이 발생하는 트랜잭션은 총 6개. (입찰 포함) <br>
--> Pessimistic Lock을 활용하여 동시성 제어
-
-### 현재 입찰가 반정규화 후 발생한 문제
-
-1. 입찰 시간이 종료되기 직전에 입찰 시도 요청이 들어온다. <br>
-2. 입찰 트랜잭션이 끝나기 전에 입찰 만료 시간이 지나고 입찰 만료 확인 트랜잭션(cron Job)이 시작된다. <br>
-3. 마지막 입찰자의 입찰가 갱신이 분실된다. <br>
-<p align="center">
-<img width="752" alt="2025-03-08_21-36-10" src="https://github.com/user-attachments/assets/c2279968-93c3-4011-b02a-b40861813323" />
-</p>
-
-조회 성능 때문에 입찰가를 반정규화한 위와 같은 문제가 발생했습니다. <br>
-
-이를 해결하기 위해 입찰 기간 만료 TX를 시작하기 전에도 분산락을 잡음으로써 Lost Update 문제를 해결할 수 있었습니다.
-<p align="center">
-<img width="728" alt="2025-03-08_21-38-28" src="https://github.com/user-attachments/assets/11a5cfe2-6938-4eae-927a-4152420c2194" />
-</p>
-
-### 기타
-* 입찰가 반정규화 및 쿼리, 인덱스 튜닝으로 상품 조회 성능 개선
-* Kakao Oauth 로그인 기능 구현
-* Docker & GitHub Actions를 활용하여 CICD 파이프라인 구축
-
-# 기술 스택
-<div align="center">
-  <h3> 기술 스택 </h3>
-  <img src="https://img.shields.io/badge/Java17-000000?style=flat-square&logo=java&color=F40D12">
-  <img src="https://img.shields.io/badge/Spring_Boot_3-0?style=flat-square&logo=spring-boot&logoColor=white&color=%236DB33F">
-  <img src="https://img.shields.io/badge/MySQL_8-0?style=flat-square&logo=mysql&logoColor=white&color=4479A1">
-  <img src="https://img.shields.io/badge/Hibernate-0?style=flat-square&logo=hibernate&logoColor=white&color=%2359666C">
-  <br/>
-  <img src="https://img.shields.io/badge/Amazon_EC2-0?style=flat-square&logo=amazon-ec2&logoColor=white&color=%23FF9900">
-  <img src="https://img.shields.io/badge/Redis-DC382D?style=flat-square&logo=redis&logoColor=white">
-  <br/>
-  <img src="https://img.shields.io/badge/OAuth2-0?style=flat-square&logo=oauth2&logoColor=white&color=%23000000">
-  <img src="https://img.shields.io/badge/Gradle-0?style=flat-square&logo=gradle&logoColor=white&color=%2302303A">
-  <img src="https://img.shields.io/badge/JUnit5-0?style=JUnit5-square&logo=junit5&logoColor=white&color=%2325A162">
-  <br/>
-  <img src="https://img.shields.io/badge/Docker-2496ED?style=flat-square&logo=docker&logoColor=white">
-</div>
-<br/>
-<br/>
-
+## 
